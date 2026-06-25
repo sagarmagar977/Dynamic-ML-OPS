@@ -29,7 +29,12 @@ def list_models():
                 try:
                     with open(metadata_path, 'r', encoding='utf-8') as f:
                         metadata = json.load(f)
-                    
+
+                    # Get creation and modification timestamps
+                    joblib_path = os.path.join(model_path, "model.joblib")
+                    created_time = os.path.getctime(model_path)
+                    modified_time = os.path.getmtime(joblib_path) if os.path.exists(joblib_path) else created_time
+
                     models_list.append({
                         "id": model_id,
                         "name": metadata.get("model_name", model_id),
@@ -40,7 +45,9 @@ def list_models():
                         "target_name": metadata.get("target_name", "target"),
                         "metrics": metadata.get("metrics", {}),
                         "classes": metadata.get("classes", []),
-                        "active": model_manager.active_model_id == model_id
+                        "active": model_manager.active_model_id == model_id,
+                        "created_at": created_time,
+                        "modified_at": modified_time
                     })
                 except Exception:
                     # Skip invalid metadata

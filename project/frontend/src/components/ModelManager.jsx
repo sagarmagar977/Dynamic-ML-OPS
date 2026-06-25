@@ -20,7 +20,7 @@ const ModelManager = ({ models, activeModelId, onRefresh, onActivate }) => {
 
   // Lifecycle Menu state
   const [activeMenuId, setActiveMenuId] = useState(null);
-  
+
   // Edit Modal state
   const [editingModel, setEditingModel] = useState(null);
 
@@ -33,6 +33,8 @@ const ModelManager = ({ models, activeModelId, onRefresh, onActivate }) => {
   const [classImages, setClassImages] = useState({});
   const [inspectLoading, setInspectLoading] = useState(false);
   const [metaClassNames, setMetaClassNames] = useState([]);
+  const [sortBy, setSortBy] = useState("newest");
+  const [autoActivate, setAutoActivate] = useState(false);
 
   // Local metadata reader to extract friendly class names
   useEffect(() => {
@@ -98,7 +100,7 @@ const ModelManager = ({ models, activeModelId, onRefresh, onActivate }) => {
       // 1. Deploy/Mount model first
       const modelIdTrimmed = newModelId.trim();
       await deployModel(modelIdTrimmed, modelFile, metadataFile);
-      
+
       // 2. If classification and user checked to add images, upload them using mapped class name
       if (inspectedData?.task_type === "classification" && wantClassImages) {
         for (let idx = 0; idx < inspectedData.classes.length; idx++) {
@@ -111,6 +113,12 @@ const ModelManager = ({ models, activeModelId, onRefresh, onActivate }) => {
         }
       }
 
+      // 3. Auto-activate model if selected
+      if (autoActivate) {
+        await activateModel(modelIdTrimmed);
+        onActivate(modelIdTrimmed);
+      }
+
       setUploadSuccess(true);
       setNewModelId("");
       setModelFile(null);
@@ -119,6 +127,7 @@ const ModelManager = ({ models, activeModelId, onRefresh, onActivate }) => {
       setWantClassImages(false);
       setClassImages({});
       setMetaClassNames([]);
+      setAutoActivate(false);
       onRefresh();
     } catch (err) {
       setUploadError(err.response?.data?.detail || "Model deployment failed.");
@@ -190,7 +199,7 @@ const ModelManager = ({ models, activeModelId, onRefresh, onActivate }) => {
             <div className="text-amber-500 font-semibold">[HOW TO PREPARE ARTIFACTS FOR DEPLOYMENT]</div>
             <p>Run this code in your Jupyter or Colab notebook to generate perfectly compatible assets:</p>
             <pre className="bg-zinc-950 p-3 rounded text-zinc-300 overflow-x-auto text-[10px] border border-zinc-900 leading-relaxed">
-{`# 1. Export your trained model
+              {`# 1. Export your trained model
 import joblib
 joblib.dump(model, "model.joblib")
 
@@ -298,31 +307,44 @@ with open("metadata.json", "w") as f:
                             <span className="text-[10px] text-zinc-500 uppercase font-semibold">
                               Image token for: <strong className="text-zinc-300 font-mono">{displayName}</strong>
                             </span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                setClassImages((prev) => ({ ...prev, [cls]: file }));
-                              }
-                            }}
-                            className="bg-black text-zinc-400 border border-zinc-900 text-[10px] p-1 font-mono rounded file:bg-zinc-900 file:text-amber-500 file:border-none file:text-[9px] file:uppercase file:font-semibold file:px-2 file:py-1 file:mr-2 file:rounded file:cursor-pointer"
-                          />
-                          {classImages[cls] && (
-                            <span className="text-[9px] text-green-500 font-mono">
-                              ✓ Selected: {classImages[cls].name}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setClassImages((prev) => ({ ...prev, [cls]: file }));
+                                }
+                              }}
+                              className="bg-black text-zinc-400 border border-zinc-900 text-[10px] p-1 font-mono rounded file:bg-zinc-900 file:text-amber-500 file:border-none file:text-[9px] file:uppercase file:font-semibold file:px-2 file:py-1 file:mr-2 file:rounded file:cursor-pointer"
+                            />
+                            {classImages[cls] && (
+                              <span className="text-[9px] text-green-500 font-mono">
+                                ✓ Selected: {classImages[cls].name}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               )}
             </div>
           )}
+
+          <div className="flex items-center space-x-2 pb-1 pt-2">
+            <input
+              type="checkbox"
+              id="autoActivate"
+              checked={autoActivate}
+              onChange={(e) => setAutoActivate(e.target.checked)}
+              className="accent-amber-500 bg-black border border-zinc-900 cursor-pointer"
+            />
+            <label htmlFor="autoActivate" className="text-[10px] text-zinc-400 font-mono select-none cursor-pointer uppercase font-semibold">
+              Activate model automatically upon deployment?
+            </label>
+          </div>
 
           <button
             type="submit"
@@ -336,9 +358,23 @@ with open("metadata.json", "w") as f:
 
       {/* Models Inventory Ledger Grid */}
       <div className="border border-zinc-900 bg-zinc-950 p-5 rounded space-y-4">
-        <h3 className="text-xs text-amber-500 font-bold uppercase tracking-wider border-b border-zinc-900 pb-2">
-          [Registry Ledger Data Grid]
-        </h3>
+        <div className="flex justify-between items-center border-b border-zinc-900 pb-2">
+          <h3 className="text-xs text-amber-500 font-bold uppercase tracking-wider">
+            [ARTIFACTS]
+          </h3>
+          <div className="flex items-center space-x-2 text-[10px] text-zinc-500 font-mono">
+            <span>SORT:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="bg-black text-amber-500 border border-zinc-800 text-[10px] px-2 py-0.5 rounded focus:outline-none focus:border-amber-500"
+            >
+              <option value="newest">NEWEST FIRST</option>
+              <option value="oldest">OLDEST FIRST</option>
+              <option value="modified">LATEST MODIFIED</option>
+            </select>
+          </div>
+        </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-xs font-mono border-collapse text-zinc-400">
@@ -359,83 +395,91 @@ with open("metadata.json", "w") as f:
                   </td>
                 </tr>
               ) : (
-                models.map((model) => (
-                  <tr key={model.id} className="border-b border-zinc-900/60 hover:bg-zinc-900/10">
-                    <td className="py-3 px-2">
-                      <div className="text-white font-bold">{model.name}</div>
-                      <div className="text-[10px] text-zinc-500">{model.id} | {model.algorithm_variant}</div>
-                    </td>
-                    <td className="py-3 px-2 uppercase text-amber-600 font-bold">
-                      {model.task_type}
-                    </td>
-                    <td className="py-3 px-2">
-                      {Object.entries(model.metrics || {}).map(([m, val]) => (
-                        <div key={m} className="text-[10px] whitespace-nowrap">
-                          {m.toUpperCase()}: {(val * 100).toFixed(1)}%
-                        </div>
-                      ))}
-                    </td>
-                    <td className="py-3 px-2">
-                      {model.active ? (
-                        <span className="inline-block px-2 py-0.5 border border-green-500 text-green-500 bg-green-950/20 text-[9px] uppercase font-bold rounded animate-pulse">
-                          [ONLINE]
-                        </span>
-                      ) : (
-                        <span className="inline-block px-2 py-0.5 border border-zinc-800 text-zinc-600 bg-zinc-950 text-[9px] uppercase font-bold rounded">
-                          [COLD]
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3 px-2 text-right relative">
-                      <div className="flex items-center justify-end space-x-2">
-                        {/* Class Image Trigger */}
-                        {model.classes && model.classes.length > 0 && (
-                          <button
-                            onClick={() => {
-                              setSelectedClassModelId(model.id);
-                              setSelectedClassName(model.classes[0]);
-                            }}
-                            className="border border-zinc-800 hover:border-amber-500/50 text-[9px] text-zinc-500 hover:text-amber-500 px-2 py-0.5 rounded font-mono uppercase"
-                          >
-                            [Visual Token]
-                          </button>
+                (() => {
+                  const sortedModels = [...models].sort((a, b) => {
+                    if (sortBy === "newest") return (b.created_at || 0) - (a.created_at || 0);
+                    if (sortBy === "oldest") return (a.created_at || 0) - (b.created_at || 0);
+                    if (sortBy === "modified") return (b.modified_at || 0) - (a.modified_at || 0);
+                    return 0;
+                  });
+                  return sortedModels.map((model) => (
+                    <tr key={model.id} className="border-b border-zinc-900/60 hover:bg-zinc-900/10">
+                      <td className="py-3 px-2">
+                        <div className="text-white font-bold">{model.name}</div>
+                        <div className="text-[10px] text-zinc-500">{model.id} | {model.algorithm_variant}</div>
+                      </td>
+                      <td className="py-3 px-2 uppercase text-amber-600 font-bold">
+                        {model.task_type}
+                      </td>
+                      <td className="py-3 px-2">
+                        {Object.entries(model.metrics || {}).map(([m, val]) => (
+                          <div key={m} className="text-[10px] whitespace-nowrap">
+                            {m.toUpperCase()}: {(val * 100).toFixed(1)}%
+                          </div>
+                        ))}
+                      </td>
+                      <td className="py-3 px-2">
+                        {model.active ? (
+                          <span className="inline-block px-2 py-0.5 border border-green-500 text-green-500 bg-green-950/20 text-[9px] uppercase font-bold rounded animate-pulse">
+                            [ONLINE]
+                          </span>
+                        ) : (
+                          <span className="inline-block px-2 py-0.5 border border-zinc-800 text-zinc-600 bg-zinc-950 text-[9px] uppercase font-bold rounded">
+                            [COLD]
+                          </span>
                         )}
+                      </td>
+                      <td className="py-3 px-2 text-right relative">
+                        <div className="flex items-center justify-end space-x-2">
+                          {/* Class Image Trigger */}
+                          {model.classes && model.classes.length > 0 && (
+                            <button
+                              onClick={() => {
+                                setSelectedClassModelId(model.id);
+                                setSelectedClassName(model.classes[0]);
+                              }}
+                              className="border border-zinc-800 hover:border-amber-500/50 text-[9px] text-zinc-500 hover:text-amber-500 px-2 py-0.5 rounded font-mono uppercase"
+                            >
+                              [Visual Token]
+                            </button>
+                          )}
 
-                        <button
-                          onClick={() => setActiveMenuId(activeMenuId === model.id ? null : model.id)}
-                          className="text-zinc-500 hover:text-white p-1 font-mono text-sm"
-                        >
-                          ⋮
-                        </button>
-                      </div>
-
-                      {/* 3-Dot Action Menu Context Dropdown */}
-                      {activeMenuId === model.id && (
-                        <div className="absolute right-2 mt-1 w-32 bg-zinc-950 border border-zinc-800 rounded shadow-xl z-20 text-left py-1 font-mono text-[10px] uppercase">
                           <button
-                            onClick={() => handleActivate(model.id)}
-                            className="w-full text-left px-3 py-1.5 hover:bg-zinc-900 text-green-500 font-bold block"
+                            onClick={() => setActiveMenuId(activeMenuId === model.id ? null : model.id)}
+                            className="text-zinc-500 hover:text-white p-1 font-mono text-sm"
                           >
-                            [ACTIVATE]
-                          </button>
-                          <button
-                            onClick={() => setEditingModel(model)}
-                            className="w-full text-left px-3 py-1.5 hover:bg-zinc-900 text-amber-500 block"
-                          >
-                            [EDIT]
-                          </button>
-                          <button
-                            onClick={() => handleDelete(model.id)}
-                            disabled={model.active}
-                            className="w-full text-left px-3 py-1.5 hover:bg-zinc-900 text-red-500 disabled:opacity-30 block"
-                          >
-                            [DELETE]
+                            ⋮
                           </button>
                         </div>
-                      )}
-                    </td>
-                  </tr>
-                ))
+
+                        {/* 3-Dot Action Menu Context Dropdown */}
+                        {activeMenuId === model.id && (
+                          <div className="absolute right-2 mt-1 w-32 bg-zinc-950 border border-zinc-800 rounded shadow-xl z-20 text-left py-1 font-mono text-[10px] uppercase">
+                            <button
+                              onClick={() => handleActivate(model.id)}
+                              className="w-full text-left px-3 py-1.5 hover:bg-zinc-900 text-green-500 font-bold block"
+                            >
+                              [ACTIVATE]
+                            </button>
+                            <button
+                              onClick={() => setEditingModel(model)}
+                              className="w-full text-left px-3 py-1.5 hover:bg-zinc-900 text-amber-500 block"
+                            >
+                              [EDIT]
+                            </button>
+                            <button
+                              onClick={() => handleDelete(model.id)}
+                              disabled={model.active}
+                              className="w-full text-left px-3 py-1.5 hover:bg-zinc-900 text-red-500 disabled:opacity-30 block"
+                            >
+                              [DELETE]
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ));
+                })()
               )}
             </tbody>
           </table>

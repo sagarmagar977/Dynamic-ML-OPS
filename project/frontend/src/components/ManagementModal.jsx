@@ -66,26 +66,48 @@ const ManagementModal = ({ model, onClose, onSaveSuccess }) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
             <label className="block text-[10px] text-zinc-500 uppercase font-semibold">
-              Option 1: Overwrite Model weights (model.joblib)
+              Weights Binary File
             </label>
-            <input
-              type="file"
-              accept=".joblib"
-              onChange={(e) => setModelFile(e.target.files[0])}
-              className="w-full text-xs font-mono bg-black text-zinc-400 border border-zinc-900 p-2 rounded file:bg-zinc-900 file:border-0 file:text-amber-500 file:text-[10px] file:uppercase file:px-3 file:py-1 file:mr-2 file:cursor-pointer"
-            />
+            <div className="flex justify-between items-center text-xs font-mono bg-black text-zinc-400 border border-zinc-900 p-2 rounded">
+              <span className="text-zinc-300 font-bold">model.joblib</span>
+              <label className="bg-zinc-900 hover:bg-zinc-800 text-amber-500 text-[10px] uppercase px-3 py-1 rounded cursor-pointer select-none font-bold">
+                [REPLACE]
+                <input
+                  type="file"
+                  accept=".joblib"
+                  onChange={(e) => setModelFile(e.target.files[0])}
+                  className="hidden"
+                />
+              </label>
+            </div>
+            {modelFile && (
+              <div className="text-[10px] text-green-500 font-mono mt-1">
+                ✓ Ready to replace with: {modelFile.name}
+              </div>
+            )}
           </div>
 
           <div className="space-y-1">
             <label className="block text-[10px] text-zinc-500 uppercase font-semibold">
-              Option 2: Overwrite metadata schema (metadata.json)
+              Metadata Schema JSON
             </label>
-            <input
-              type="file"
-              accept=".json"
-              onChange={(e) => setMetadataFile(e.target.files[0])}
-              className="w-full text-xs font-mono bg-black text-zinc-400 border border-zinc-900 p-2 rounded file:bg-zinc-900 file:border-0 file:text-amber-500 file:text-[10px] file:uppercase file:px-3 file:py-1 file:mr-2 file:cursor-pointer"
-            />
+            <div className="flex justify-between items-center text-xs font-mono bg-black text-zinc-400 border border-zinc-900 p-2 rounded">
+              <span className="text-zinc-300 font-bold">metadata.json</span>
+              <label className="bg-zinc-900 hover:bg-zinc-800 text-amber-500 text-[10px] uppercase px-3 py-1 rounded cursor-pointer select-none font-bold">
+                [REPLACE]
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={(e) => setMetadataFile(e.target.files[0])}
+                  className="hidden"
+                />
+              </label>
+            </div>
+            {metadataFile && (
+              <div className="text-[10px] text-green-500 font-mono mt-1">
+                ✓ Ready to replace with: {metadataFile.name}
+              </div>
+            )}
           </div>
 
           <div className="flex space-x-3 pt-2">
