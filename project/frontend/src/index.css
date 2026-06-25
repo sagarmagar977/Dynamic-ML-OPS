@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Outfit:wght@400;600;800&display=swap');
+
+body {
+  margin: 0;
+  font-family: 'Fira Code', monospace;
+  background-color: #000000;
+  color: #FF9F00;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: 0.05em;
+}
+
+/* Custom terminal glow & border utilities */
+.terminal-glow {
+  text-shadow: 0 0 8px rgba(255, 159, 0, 0.6);
+}
+
+.terminal-glow-green {
+  text-shadow: 0 0 8px rgba(0, 255, 0, 0.6);
+}
+
+.terminal-glow-red {
+  text-shadow: 0 0 8px rgba(255, 0, 0, 0.6);
+}
+
+.terminal-card {
+  background-color: #0B0B0B;
+  border: 1px solid #333333;
+}
+
+.terminal-border-amber {
+  border: 1px solid #FF9F00;
+  box-shadow: 0 0 10px rgba(255, 159, 0, 0.15);
+}
+
+.terminal-border-green {
+  border: 1px solid #00FF00;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.15);
+}
+
+.terminal-border-red {
+  border: 1px solid #FF0000;
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.15);
+}
+
+/* Custom inputs styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: #333333;
+  height: 6px;
+  border-radius: 3px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #FF9F00;
+  cursor: pointer;
+  box-shadow: 0 0 5px rgba(255, 159, 0, 0.8);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #FF9F00;
+  cursor: pointer;
+  box-shadow: 0 0 5px rgba(255, 159, 0, 0.8);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #FF9F00;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #E08C00;
+}
