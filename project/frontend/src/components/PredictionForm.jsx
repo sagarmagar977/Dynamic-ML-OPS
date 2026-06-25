@@ -6,17 +6,35 @@ import SelectInput from "./SelectInput";
 const PredictionForm = ({ schema, onPredict }) => {
   const [formData, setFormData] = useState({});
 
+  // Helper function to normalize field parameters
+  const getFieldParams = (field) => {
+    const isString = typeof field === "string";
+    const name = isString ? field : field.name;
+    const label = isString ? field : (field.label || field.name);
+    const type = isString ? "continuous" : (field.type || "continuous");
+    const min = isString ? 0 : (field.min !== undefined ? field.min : 0);
+    const max = isString ? 10 : (field.max !== undefined ? field.max : 10);
+    const step = isString ? 0.1 : (field.step !== undefined ? field.step : 0.1);
+    
+    let defaultValue = "";
+    if (type === "continuous") {
+      defaultValue = isString 
+        ? 5 
+        : (field.default !== undefined ? field.default : (min + max) / 2);
+    } else {
+      defaultValue = isString ? "" : (field.default !== undefined ? field.default : "");
+    }
+
+    return { name, label, type, min, max, step, defaultValue };
+  };
+
   // Initialize form with defaults on schema change
   useEffect(() => {
     if (!schema || !schema.features) return;
     const initialData = {};
     schema.features.forEach((field) => {
-      initialData[field.name] =
-        field.default !== undefined
-          ? field.default
-          : field.type === "continuous"
-          ? (field.min + field.max) / 2
-          : "";
+      const params = getFieldParams(field);
+      initialData[params.name] = params.defaultValue;
     });
     setFormData(initialData);
   }, [schema]);
@@ -29,8 +47,8 @@ const PredictionForm = ({ schema, onPredict }) => {
     if (!schema || !schema.features) return;
     const initialData = {};
     schema.features.forEach((field) => {
-      initialData[field.name] =
-        field.type === "continuous" ? (field.min + field.max) / 2 : "";
+      const params = getFieldParams(field);
+      initialData[params.name] = params.defaultValue;
     });
     setFormData(initialData);
   };
@@ -41,7 +59,8 @@ const PredictionForm = ({ schema, onPredict }) => {
 
     // Ordered list of features according to schema features index order
     const orderedFeatures = schema.features.map((field) => {
-      const val = formData[field.name];
+      const params = getFieldParams(field);
+      const val = formData[params.name];
       return val !== undefined && val !== "" ? val : 0.0;
     });
 
@@ -73,27 +92,28 @@ const PredictionForm = ({ schema, onPredict }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 max-h-[350px] overflow-y-auto pr-2">
         {schema.features.map((field) => {
-          if (field.type === "continuous") {
+          const params = getFieldParams(field);
+          if (params.type === "continuous") {
             return (
               <SliderInput
-                key={field.name}
-                name={field.name}
-                label={field.label}
-                min={field.min}
-                max={field.max}
-                step={field.step}
-                value={formData[field.name]}
+                key={params.name}
+                name={params.name}
+                label={params.label}
+                min={params.min}
+                max={params.max}
+                step={params.step}
+                value={formData[params.name]}
                 onChange={handleFieldChange}
               />
             );
           } else {
             return (
               <SelectInput
-                key={field.name}
-                name={field.name}
-                label={field.label}
-                options={field.options}
-                value={formData[field.name]}
+                key={params.name}
+                name={params.name}
+                label={params.label}
+                options={field.options || []}
+                value={formData[params.name]}
                 onChange={handleFieldChange}
               />
             );

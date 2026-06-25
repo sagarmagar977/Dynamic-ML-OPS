@@ -86,7 +86,7 @@ def delete_model(model_id: str):
 async def deploy_model(
     model_id: str = Form(...),
     model_file: UploadFile = File(...),
-    metadata_file: UploadFile = File(...)
+    metadata_file: Optional[UploadFile] = File(None)
 ):
     """Deploy/upload a new dual model asset pair (model.joblib & metadata.json)."""
     # Create isolated folder hash/id
@@ -102,14 +102,17 @@ async def deploy_model(
         with open(temp_model_path, "wb") as f:
             f.write(await model_file.read())
             
-        # Read and parse metadata as UTF-8
-        meta_content = await metadata_file.read()
-        meta_json = json.loads(meta_content.decode("utf-8"))
+        if metadata_file is not None:
+            # Read and parse metadata as UTF-8
+            meta_content = await metadata_file.read()
+            meta_json = json.loads(meta_content.decode("utf-8"))
+        else:
+            meta_json = {}
         
         with open(temp_meta_path, "w", encoding="utf-8") as f:
             json.dump(meta_json, f, indent=2)
             
-        # Validate assets compatibility
+        # Validate assets compatibility (also infers and updates missing fields)
         validate_assets(temp_model_path, temp_meta_path)
         
         # Move to actual storage folder
@@ -225,3 +228,29 @@ def get_class_image(model_id: str, class_name: str):
         raise HTTPException(status_code=404, detail="Image token for class not found")
         
     return FileResponse(image_path, media_type="image/png")
+
+@router.post("/inspect", response_model=dict)
+async def inspect_model(model_file: UploadFile = File(...)):
+    """Temporarily load and inspect model file parameters to return classes and task_type."""
+    import tempfile
+    import joblib
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".joblib") as temp_file:
+            temp_file.write(await model_file.read())
+            temp_path = temp_file.name
+
+        try:
+            model = joblib.load(temp_path)
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
+        model_classes = getattr(model, "classes_", None)
+        if model_classes is not None:
+            classes_list = [str(c) for c in list(model_classes)]
+            return {"task_type": "classification", "classes": classes_list}
+        else:
+            return {"task_type": "regression"}
+            
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to inspect model file: {str(e)}")

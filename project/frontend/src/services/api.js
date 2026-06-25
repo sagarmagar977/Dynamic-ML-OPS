@@ -32,7 +32,9 @@ export const deployModel = async (modelId, modelFile, metadataFile) => {
   const formData = new FormData();
   formData.append("model_id", modelId);
   formData.append("model_file", modelFile);
-  formData.append("metadata_file", metadataFile);
+  if (metadataFile) {
+    formData.append("metadata_file", metadataFile);
+  }
   
   const { data } = await axios.post(`${API_BASE}/models/deploy`, formData, {
     headers: {
@@ -91,4 +93,15 @@ export const predictBatchCsv = async (csvFile) => {
     },
   });
   return data; // returns blob
+};
+
+export const inspectModel = async (modelFile) => {
+  const formData = new FormData();
+  formData.append("model_file", modelFile);
+  const { data } = await axios.post(`${API_BASE}/models/inspect`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return data;
 };

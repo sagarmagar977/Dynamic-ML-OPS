@@ -1,8 +1,8 @@
 // frontend/src/components/ModelManager.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Dropzone from "./Dropzone";
 import ManagementModal from "./ManagementModal";
-import { deployModel, deleteModel, activateModel, uploadClassImage } from "../services/api";
+import { deployModel, deleteModel, activateModel, uploadClassImage, inspectModel } from "../services/api";
 
 const ModelManager = ({ models, activeModelId, onRefresh, onActivate }) => {
   const [newModelId, setNewModelId] = useState("");
@@ -24,10 +24,69 @@ const ModelManager = ({ models, activeModelId, onRefresh, onActivate }) => {
   // Edit Modal state
   const [editingModel, setEditingModel] = useState(null);
 
+  // Helper Snippet visibility state
+  const [showHelper, setShowHelper] = useState(false);
+
+  // Inspection & Class Image Upload states
+  const [inspectedData, setInspectedData] = useState(null);
+  const [wantClassImages, setWantClassImages] = useState(false);
+  const [classImages, setClassImages] = useState({});
+  const [inspectLoading, setInspectLoading] = useState(false);
+  const [metaClassNames, setMetaClassNames] = useState([]);
+
+  // Local metadata reader to extract friendly class names
+  useEffect(() => {
+    if (!metadataFile) {
+      setMetaClassNames([]);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const json = JSON.parse(e.target.result);
+        let foundClasses = [];
+        for (const key of ["classes", "target_names", "labels", "class_names"]) {
+          if (Array.isArray(json[key])) {
+            foundClasses = json[key];
+            break;
+          }
+        }
+        setMetaClassNames(foundClasses);
+      } catch (err) {
+        console.error("Failed to parse metadata file locally:", err);
+      }
+    };
+    reader.readAsText(metadataFile);
+  }, [metadataFile]);
+
+  useEffect(() => {
+    const runInspect = async () => {
+      if (!modelFile) {
+        setInspectedData(null);
+        setWantClassImages(false);
+        setClassImages({});
+        return;
+      }
+      setInspectLoading(true);
+      setUploadError(null);
+      try {
+        const result = await inspectModel(modelFile);
+        setInspectedData(result);
+      } catch (err) {
+        console.error("Model inspection failed:", err);
+        setUploadError("Could not inspect model file. Please ensure it is a valid joblib file.");
+        setInspectedData(null);
+      } finally {
+        setInspectLoading(false);
+      }
+    };
+    runInspect();
+  }, [modelFile]);
+
   const handleDeploy = async (e) => {
     e.preventDefault();
-    if (!newModelId || !modelFile || !metadataFile) {
-      setUploadError("Please provide Model ID and select both files.");
+    if (!newModelId || !modelFile) {
+      setUploadError("Please provide Model ID and select a model file.");
       return;
     }
 
@@ -36,11 +95,30 @@ const ModelManager = ({ models, activeModelId, onRefresh, onActivate }) => {
     setUploadSuccess(false);
 
     try {
-      await deployModel(newModelId.trim(), modelFile, metadataFile);
+      // 1. Deploy/Mount model first
+      const modelIdTrimmed = newModelId.trim();
+      await deployModel(modelIdTrimmed, modelFile, metadataFile);
+      
+      // 2. If classification and user checked to add images, upload them using mapped class name
+      if (inspectedData?.task_type === "classification" && wantClassImages) {
+        for (let idx = 0; idx < inspectedData.classes.length; idx++) {
+          const rawClassName = inspectedData.classes[idx];
+          const friendlyName = metaClassNames[idx] || rawClassName;
+          const imageFile = classImages[rawClassName];
+          if (imageFile) {
+            await uploadClassImage(modelIdTrimmed, friendlyName, imageFile);
+          }
+        }
+      }
+
       setUploadSuccess(true);
       setNewModelId("");
       setModelFile(null);
       setMetadataFile(null);
+      setInspectedData(null);
+      setWantClassImages(false);
+      setClassImages({});
+      setMetaClassNames([]);
       onRefresh();
     } catch (err) {
       setUploadError(err.response?.data?.detail || "Model deployment failed.");
@@ -94,9 +172,49 @@ const ModelManager = ({ models, activeModelId, onRefresh, onActivate }) => {
     <div className="space-y-8 text-left">
       {/* Upload/Deploy Box */}
       <div className="border border-zinc-900 bg-zinc-950 p-5 rounded space-y-4">
-        <h3 className="text-xs text-amber-500 font-bold uppercase tracking-wider border-b border-zinc-900 pb-2">
-          [Dual-Asset Registry Pipeline]
-        </h3>
+        <div className="flex justify-between items-center border-b border-zinc-900 pb-2">
+          <h3 className="text-xs text-amber-500 font-bold uppercase tracking-wider">
+            [Dual-Asset Registry Pipeline]
+          </h3>
+          <button
+            type="button"
+            onClick={() => setShowHelper(!showHelper)}
+            className="text-[10px] text-zinc-500 hover:text-amber-500 font-mono transition uppercase font-semibold border border-zinc-800 hover:border-amber-500 px-2 py-0.5 rounded"
+          >
+            {showHelper ? "[HIDE PYTHON HELP]" : "[SHOW PYTHON HELP]"}
+          </button>
+        </div>
+
+        {showHelper && (
+          <div className="border border-zinc-800 bg-black/60 p-4 rounded font-mono text-[11px] text-zinc-400 space-y-3">
+            <div className="text-amber-500 font-semibold">[HOW TO PREPARE ARTIFACTS FOR DEPLOYMENT]</div>
+            <p>Run this code in your Jupyter or Colab notebook to generate perfectly compatible assets:</p>
+            <pre className="bg-zinc-950 p-3 rounded text-zinc-300 overflow-x-auto text-[10px] border border-zinc-900 leading-relaxed">
+{`# 1. Export your trained model
+import joblib
+joblib.dump(model, "model.joblib")
+
+# 2. Export metadata (optional - missing values are auto-inferred)
+import json
+from datetime import datetime
+
+metadata = {
+    "model_name": "RandomForestClassifier",
+    "trained_at": datetime.utcnow().isoformat(),
+    "feature_names": list(feature_names),  # Will automatically map to input sliders
+    "classes": list(model.classes_),       # Optional for classification models
+    "task_type": "classification"          # "classification" or "regression"
+}
+
+with open("metadata.json", "w") as f:
+    json.dump(metadata, f, indent=4)
+`}
+            </pre>
+            <p className="text-zinc-500 text-[10px]">
+              * Note: The backend automatically normalizes different name conventions (like <code className="text-zinc-400">feature_names</code>, <code className="text-zinc-400">columns</code>, or <code className="text-zinc-400">features</code>) and falls back to generating placeholders if omitted.
+            </p>
+          </div>
+        )}
 
         {uploadError && (
           <div className="border border-red-500 bg-red-950/20 text-red-500 font-mono text-xs p-3 rounded">
@@ -132,16 +250,83 @@ const ModelManager = ({ models, activeModelId, onRefresh, onActivate }) => {
               onFileSelect={setModelFile}
             />
             <Dropzone
-              label="Select metadata.json"
+              label="Select metadata.json (optional)"
               accept=".json"
               selectedFile={metadataFile}
               onFileSelect={setMetadataFile}
             />
           </div>
 
+          {inspectLoading && (
+            <div className="text-[10px] text-zinc-500 font-mono animate-pulse">
+              [ANALYZING MODEL BINARY INTEGRITY...]
+            </div>
+          )}
+
+          {inspectedData && (
+            <div className="border border-zinc-900 bg-black/40 p-3 rounded space-y-3">
+              <div className="flex items-center space-x-2">
+                <span className="text-[10px] font-mono uppercase bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded text-amber-500 font-semibold">
+                  Task Type: {inspectedData.task_type}
+                </span>
+                {inspectedData.task_type === "classification" && (
+                  <span className="text-[10px] font-mono text-zinc-500">
+                    ({inspectedData.classes.length} classes detected)
+                  </span>
+                )}
+              </div>
+
+              {inspectedData.task_type === "classification" && (
+                <div className="space-y-3">
+                  <label className="flex items-center space-x-2 cursor-pointer text-xs font-mono text-zinc-400 select-none">
+                    <input
+                      type="checkbox"
+                      checked={wantClassImages}
+                      onChange={(e) => setWantClassImages(e.target.checked)}
+                      className="accent-amber-500 bg-black border border-zinc-900"
+                    />
+                    <span>Associate custom token images with target classes?</span>
+                  </label>
+
+                  {wantClassImages && (
+                    <div className="border-t border-zinc-900 pt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {inspectedData.classes.map((cls, idx) => {
+                        const friendlyName = metaClassNames[idx] || cls;
+                        const displayName = metaClassNames[idx] ? `${metaClassNames[idx]} (${cls})` : cls;
+                        return (
+                          <div key={cls} className="flex flex-col space-y-1">
+                            <span className="text-[10px] text-zinc-500 uppercase font-semibold">
+                              Image token for: <strong className="text-zinc-300 font-mono">{displayName}</strong>
+                            </span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                setClassImages((prev) => ({ ...prev, [cls]: file }));
+                              }
+                            }}
+                            className="bg-black text-zinc-400 border border-zinc-900 text-[10px] p-1 font-mono rounded file:bg-zinc-900 file:text-amber-500 file:border-none file:text-[9px] file:uppercase file:font-semibold file:px-2 file:py-1 file:mr-2 file:rounded file:cursor-pointer"
+                          />
+                          {classImages[cls] && (
+                            <span className="text-[9px] text-green-500 font-mono">
+                              ✓ Selected: {classImages[cls].name}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <button
             type="submit"
-            disabled={uploadLoading || !newModelId || !modelFile || !metadataFile}
+            disabled={uploadLoading || !newModelId || !modelFile}
             className="w-full bg-amber-500 hover:bg-amber-600 text-black uppercase font-bold py-2 font-mono text-xs tracking-widest transition rounded disabled:opacity-50"
           >
             {uploadLoading ? "[MOUNTING CHANNELS...]" : "MOUNT NEW ARTIFACTS"}
