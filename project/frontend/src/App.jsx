@@ -464,10 +464,11 @@ function App() {
                     <button
                       key={tab}
                       onClick={() => setActiveTab(tab)}
-                      className={`flex-1 sm:flex-initial text-center px-1.5 sm:px-4 py-2 border-t border-x rounded-t transition-all font-bold whitespace-nowrap ${isActive
-                        ? "border-[var(--border-color)] bg-[var(--panel-bg)] text-[var(--accent-color)] border-b-[var(--panel-bg)]"
-                        : "border-[var(--border-color)]/40 bg-[var(--panel-bg)]/20 text-zinc-500 hover:text-[var(--text-color)] hover:bg-[var(--panel-bg)]/10"
-                        }`}
+                      className={`flex-1 sm:flex-initial text-center px-1.5 sm:px-4 py-2 font-bold whitespace-nowrap rounded-t tape-tab-btn ${
+                        isActive
+                          ? "active text-[var(--accent-color)]"
+                          : "text-zinc-500 hover:text-[var(--text-color)] bg-[var(--panel-bg)]/20"
+                      }`}
                     >
                       {tab === "performance charts" ? (
                         <span>

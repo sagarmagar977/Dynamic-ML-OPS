@@ -220,3 +220,27 @@ input[type="range"]::-moz-range-thumb {
   text-shadow: 0 0 10px var(--glow-color);
   transform: scale(1.18);
 }
+
+/* Mechanical Tape-Recorder Tab Buttons */
+.tape-tab-btn {
+  position: relative;
+  transition: all 0.12s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 1px solid var(--border-color) !important;
+  border-bottom: 4px solid var(--border-color) !important;
+  transform: translateY(0);
+  outline: none;
+}
+
+.tape-tab-btn:hover {
+  filter: brightness(1.1);
+  border-bottom-color: var(--accent-color) !important;
+}
+
+.tape-tab-btn.active {
+  transform: translateY(3px) !important;
+  border-bottom-width: 1px !important;
+  border-bottom-color: transparent !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5) !important;
+  background-color: var(--panel-bg) !important;
+  color: var(--accent-color) !important;
+}
