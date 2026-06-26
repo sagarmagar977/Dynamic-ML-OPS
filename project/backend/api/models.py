@@ -16,12 +16,60 @@ os.makedirs(MODELS_DIR, exist_ok=True)
 def list_models():
     """List all available models in the repository storage."""
     model_manager = ModelManager()
-    models_list = []
     
+    # Try getting from Supabase first if connected
+    from backend.supabase_client import supabase, SUPABASE_URL, key
+    is_dummy = (supabase.__class__.__name__ == "DummyClient" or 
+                not SUPABASE_URL or 
+                "YOUR_SUPABASE_URL" in SUPABASE_URL or
+                not key or 
+                "YOUR_ANON_KEY" in key)
+    
+    if not is_dummy:
+        try:
+            resp = supabase.from_("models").select("*").execute()
+            if hasattr(resp, "error") and resp.error:
+                raise Exception(resp.error.message)
+            
+            models_list = []
+            from datetime import datetime
+            def to_epoch(dt_str):
+                if not dt_str:
+                    return 0.0
+                try:
+                    clean_str = dt_str.replace("Z", "+00:00")
+                    return datetime.fromisoformat(clean_str).timestamp()
+                except Exception:
+                    return 0.0
+                    
+            for row in resp.data:
+                models_list.append({
+                    "id": row["id"],
+                    "name": row.get("name") or row["id"],
+                    "algorithm_variant": row.get("algorithm_variant") or "Unknown",
+                    "task_type": row.get("task_type") or "unknown",
+                    "features": row.get("features") or [],
+                    "n_features_in_": row.get("n_features_in_", 0),
+                    "target_name": row.get("target_name") or "target",
+                    "metrics": row.get("metrics") or {},
+                    "classes": row.get("classes") or [],
+                    "colab_link": row.get("colab_link"),
+                    "active": model_manager.active_model_id == row["id"],
+                    "created_at": to_epoch(row.get("created_at")),
+                    "modified_at": to_epoch(row.get("modified_at"))
+                })
+            return {"models": models_list}
+        except Exception as e:
+            print(f"Supabase models list failed: {e}. Falling back to disk storage.")
+
+    # Fallback to local files scanning
+    models_list = []
     if not os.path.exists(MODELS_DIR):
         return {"models": []}
         
     for model_id in os.listdir(MODELS_DIR):
+        if model_id.startswith("backup_") or model_id.startswith("temp_"):
+            continue
         model_path = os.path.join(MODELS_DIR, model_id)
         if os.path.isdir(model_path):
             metadata_path = os.path.join(model_path, "metadata.json")
@@ -30,7 +78,6 @@ def list_models():
                     with open(metadata_path, 'r', encoding='utf-8') as f:
                         metadata = json.load(f)
 
-                    # Get creation and modification timestamps
                     joblib_path = os.path.join(model_path, "model.joblib")
                     created_time = os.path.getctime(model_path)
                     modified_time = os.path.getmtime(joblib_path) if os.path.exists(joblib_path) else created_time
@@ -45,12 +92,12 @@ def list_models():
                         "target_name": metadata.get("target_name", "target"),
                         "metrics": metadata.get("metrics", {}),
                         "classes": metadata.get("classes", []),
+                        "colab_link": metadata.get("colab_link"),
                         "active": model_manager.active_model_id == model_id,
                         "created_at": created_time,
                         "modified_at": modified_time
                     })
                 except Exception:
-                    # Skip invalid metadata
                     continue
     
     return {"models": models_list}
@@ -59,8 +106,14 @@ def list_models():
 def activate_model(model_id: str):
     """Activate a model (hot-swap in volatile execution memory)."""
     model_manager = ModelManager()
-    model_path = os.path.join(MODELS_DIR, model_id, "model.joblib")
     
+    # Trigger model caching download if it is in Supabase but not local
+    try:
+        model_manager.load_model(model_id)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Model {model_id} initialization failed: {str(e)}")
+        
+    model_path = os.path.join(MODELS_DIR, model_id, "model.joblib")
     if not os.path.exists(model_path):
         raise HTTPException(status_code=404, detail=f"Model {model_id} binary not found")
     
@@ -77,12 +130,32 @@ def delete_model(model_id: str):
     if model_id == model_manager.active_model_id:
         raise HTTPException(status_code=400, detail="Cannot delete the currently active model. Please activate another model first.")
     
+    # Remove from Supabase if connected
+    from backend.supabase_client import supabase, SUPABASE_URL, key
+    is_dummy = (supabase.__class__.__name__ == "DummyClient" or 
+                not SUPABASE_URL or 
+                "YOUR_SUPABASE_URL" in SUPABASE_URL or
+                not key or 
+                "YOUR_ANON_KEY" in key)
+    
+    if not is_dummy:
+        try:
+            supabase.from_("models").delete().eq("id", model_id).execute()
+        except Exception as e:
+            print(f"Supabase DB delete failed: {e}")
+            
+        try:
+            supabase.storage.from_("models").remove([f"{model_id}/model.joblib", f"{model_id}/metadata.json"])
+        except Exception as e:
+            print(f"Supabase Storage files delete warning: {e}")
+
     model_path = os.path.join(MODELS_DIR, model_id)
     if not os.path.exists(model_path):
-        raise HTTPException(status_code=404, detail=f"Model {model_id} not found")
+        # If it was in Supabase, we already deleted it there. Let's return success if it's missing locally too.
+        model_manager.delete_model_from_cache(model_id)
+        return {"status": "success", "deleted_model": model_id}
     
     try:
-        # Physical wipe of files from storage as per PRD Section 3.4
         shutil.rmtree(model_path)
         model_manager.delete_model_from_cache(model_id)
         return {"status": "success", "deleted_model": model_id}
@@ -93,10 +166,10 @@ def delete_model(model_id: str):
 async def deploy_model(
     model_id: str = Form(...),
     model_file: UploadFile = File(...),
-    metadata_file: Optional[UploadFile] = File(None)
+    metadata_file: Optional[UploadFile] = File(None),
+    colab_link: Optional[str] = Form(None)
 ):
     """Deploy/upload a new dual model asset pair (model.joblib & metadata.json)."""
-    # Create isolated folder hash/id
     temp_id = f"temp_{model_id}"
     temp_dir = os.path.join(MODELS_DIR, temp_id)
     os.makedirs(temp_dir, exist_ok=True)
@@ -105,24 +178,23 @@ async def deploy_model(
     temp_meta_path = os.path.join(temp_dir, "metadata.json")
     
     try:
-        # Save temp files
         with open(temp_model_path, "wb") as f:
             f.write(await model_file.read())
             
         if metadata_file is not None:
-            # Read and parse metadata as UTF-8
             meta_content = await metadata_file.read()
             meta_json = json.loads(meta_content.decode("utf-8"))
         else:
             meta_json = {}
         
+        # Inject Google Colab link into metadata
+        meta_json["colab_link"] = colab_link if colab_link != "" else None
+        
         with open(temp_meta_path, "w", encoding="utf-8") as f:
             json.dump(meta_json, f, indent=2)
             
-        # Validate assets compatibility (also infers and updates missing fields)
         validate_assets(temp_model_path, temp_meta_path)
         
-        # Move to actual storage folder
         final_dir = os.path.join(MODELS_DIR, model_id)
         if os.path.exists(final_dir):
             shutil.rmtree(final_dir)
@@ -131,6 +203,51 @@ async def deploy_model(
         shutil.move(temp_model_path, os.path.join(final_dir, "model.joblib"))
         shutil.move(temp_meta_path, os.path.join(final_dir, "metadata.json"))
         
+        # Sync to Supabase if connected
+        from backend.supabase_client import supabase, SUPABASE_URL, key
+        is_dummy = (supabase.__class__.__name__ == "DummyClient" or 
+                    not SUPABASE_URL or 
+                    "YOUR_SUPABASE_URL" in SUPABASE_URL or
+                    not key or 
+                    "YOUR_ANON_KEY" in key)
+        
+        if not is_dummy:
+            try:
+                # 1. Sync metadata to Supabase public.models table
+                model_record = {
+                    "id": model_id,
+                    "name": meta_json.get("model_name") or model_id,
+                    "algorithm_variant": meta_json.get("algorithm_variant") or "Unknown",
+                    "task_type": meta_json.get("task_type") or "unknown",
+                    "features": meta_json.get("features") or [],
+                    "n_features_in_": meta_json.get("n_features_in_") or len(meta_json.get("features") or []),
+                    "target_name": meta_json.get("target_name") or "target",
+                    "metrics": meta_json.get("metrics") or {},
+                    "classes": meta_json.get("classes") or [],
+                    "colab_link": colab_link if colab_link != "" else None
+                }
+                supabase.from_("models").upsert(model_record).execute()
+            except Exception as e:
+                print(f"Supabase DB metadata deployment sync warning: {e}")
+                
+            try:
+                # 2. Upload files to Supabase Storage models bucket
+                with open(os.path.join(final_dir, "model.joblib"), "rb") as f:
+                    model_bytes = f.read()
+                with open(os.path.join(final_dir, "metadata.json"), "rb") as f:
+                    meta_bytes = f.read()
+                    
+                # Pre-clean storage files to enable overwrite
+                try:
+                    supabase.storage.from_("models").remove([f"{model_id}/model.joblib", f"{model_id}/metadata.json"])
+                except Exception:
+                    pass
+                    
+                supabase.storage.from_("models").upload(f"{model_id}/model.joblib", model_bytes)
+                supabase.storage.from_("models").upload(f"{model_id}/metadata.json", meta_bytes)
+            except Exception as e:
+                print(f"Supabase Storage file upload warning: {e}")
+        
         return {"status": "success", "model_id": model_id}
         
     except ValueError as val_err:
@@ -138,7 +255,6 @@ async def deploy_model(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Deployment failed: {str(e)}")
     finally:
-        # Clean up temp dir if exists
         if os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
 
@@ -146,10 +262,21 @@ async def deploy_model(
 async def edit_model(
     model_id: str,
     model_file: Optional[UploadFile] = File(None),
-    metadata_file: Optional[UploadFile] = File(None)
+    metadata_file: Optional[UploadFile] = File(None),
+    model_name: Optional[str] = Form(None),
+    colab_link: Optional[str] = Form(None)
 ):
     """Edit/overwrite parts of an existing model. Triggers soft reload if active."""
     model_dir = os.path.join(MODELS_DIR, model_id)
+    
+    # Try downloading missing files from Supabase to construct cache locally if editing a Supabase-only model
+    if not os.path.exists(model_dir):
+        from backend.utils.model_loader import ModelManager as LoaderClass
+        try:
+            LoaderClass().load_model(model_id)
+        except Exception:
+            pass
+            
     if not os.path.exists(model_dir):
         raise HTTPException(status_code=404, detail=f"Model {model_id} not found")
         
@@ -163,7 +290,7 @@ async def edit_model(
     shutil.copy2(metadata_path, os.path.join(backup_dir, "metadata.json"))
     
     try:
-        # Perform replacements
+        # Perform replacements locally first
         if model_file is not None:
             with open(joblib_path, "wb") as f:
                 f.write(await model_file.read())
@@ -171,30 +298,82 @@ async def edit_model(
         if metadata_file is not None:
             meta_content = await metadata_file.read()
             meta_json = json.loads(meta_content.decode("utf-8"))
-            with open(metadata_path, "w", encoding="utf-8") as f:
-                json.dump(meta_json, f, indent=2)
+        else:
+            with open(metadata_path, 'r', encoding='utf-8') as f:
+                meta_json = json.load(f)
                 
-        # Validate current unified files
+        if model_name is not None:
+            meta_json["model_name"] = model_name
+        if colab_link is not None:
+            meta_json["colab_link"] = colab_link if colab_link != "" else None
+            
+        with open(metadata_path, "w", encoding="utf-8") as f:
+            json.dump(meta_json, f, indent=2)
+            
         validate_assets(joblib_path, metadata_path)
         
         # Clear backup
         shutil.rmtree(backup_dir)
         
-        # Soft reload if active in memory as per PRD Section 3.4
+        # Sync updates to Supabase if connected
+        from backend.supabase_client import supabase, SUPABASE_URL, key
+        is_dummy = (supabase.__class__.__name__ == "DummyClient" or 
+                    not SUPABASE_URL or 
+                    "YOUR_SUPABASE_URL" in SUPABASE_URL or
+                    not key or 
+                    "YOUR_ANON_KEY" in key)
+        
+        if not is_dummy:
+            try:
+                from datetime import datetime
+                db_update = {
+                    "name": meta_json.get("model_name") or model_id,
+                    "colab_link": meta_json.get("colab_link"),
+                    "algorithm_variant": meta_json.get("algorithm_variant") or "Unknown",
+                    "task_type": meta_json.get("task_type") or "unknown",
+                    "features": meta_json.get("features") or [],
+                    "n_features_in_": meta_json.get("n_features_in_") or len(meta_json.get("features") or []),
+                    "target_name": meta_json.get("target_name") or "target",
+                    "metrics": meta_json.get("metrics") or {},
+                    "classes": meta_json.get("classes") or [],
+                    "modified_at": datetime.utcnow().isoformat()
+                }
+                supabase.from_("models").update(db_update).eq("id", model_id).execute()
+            except Exception as e:
+                print(f"Supabase DB edit sync warning: {e}")
+                
+            try:
+                # Update files in Storage
+                with open(joblib_path, "rb") as f:
+                    model_bytes = f.read()
+                with open(metadata_path, "rb") as f:
+                    meta_bytes = f.read()
+                    
+                try:
+                    supabase.storage.from_("models").remove([f"{model_id}/model.joblib", f"{model_id}/metadata.json"])
+                except Exception:
+                    pass
+                    
+                supabase.storage.from_("models").upload(f"{model_id}/model.joblib", model_bytes)
+                supabase.storage.from_("models").upload(f"{model_id}/metadata.json", meta_bytes)
+            except Exception as e:
+                print(f"Supabase Storage edit sync warning: {e}")
+        
+        # Soft reload if active in memory
         model_manager = ModelManager()
+        if model_id in model_manager.models:
+            del model_manager.models[model_id]
         if model_manager.active_model_id == model_id:
             model_manager.activate_model(model_id)
             
         return {"status": "success", "model_id": model_id, "reloaded": model_manager.active_model_id == model_id}
         
     except ValueError as val_err:
-        # Rollback
         shutil.copy2(os.path.join(backup_dir, "model.joblib"), joblib_path)
         shutil.copy2(os.path.join(backup_dir, "metadata.json"), metadata_path)
         shutil.rmtree(backup_dir)
         raise HTTPException(status_code=400, detail=f"Edit Validation failed: {str(val_err)}. Changes rolled back.")
     except Exception as e:
-        # Rollback
         shutil.copy2(os.path.join(backup_dir, "model.joblib"), joblib_path)
         shutil.copy2(os.path.join(backup_dir, "metadata.json"), metadata_path)
         shutil.rmtree(backup_dir)

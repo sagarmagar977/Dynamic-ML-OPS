@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import SliderInput from "./SliderInput";
 import SelectInput from "./SelectInput";
 
-const PredictionForm = ({ schema, onPredict }) => {
+const PredictionForm = ({ schema, onPredict, chatOpen }) => {
   const [formData, setFormData] = useState({});
 
   // Helper function to normalize field parameters
@@ -15,11 +15,11 @@ const PredictionForm = ({ schema, onPredict }) => {
     const min = isString ? 0 : (field.min !== undefined ? field.min : 0);
     const max = isString ? 10 : (field.max !== undefined ? field.max : 10);
     const step = isString ? 0.1 : (field.step !== undefined ? field.step : 0.1);
-    
+
     let defaultValue = "";
     if (type === "continuous") {
-      defaultValue = isString 
-        ? 5 
+      defaultValue = isString
+        ? 5
         : (field.default !== undefined ? field.default : (min + max) / 2);
     } else {
       defaultValue = isString ? "" : (field.default !== undefined ? field.default : "");
@@ -70,7 +70,7 @@ const PredictionForm = ({ schema, onPredict }) => {
   if (!schema || !schema.features) {
     return (
       <div className="text-zinc-500 font-mono text-center py-10">
-        [NO MODEL ACTIVE. ACTIVATE A MODEL VIA THE DEPLOY TAB FIRST]
+        NO MODEL ACTIVE. ACTIVATE A MODEL VIA THE DEPLOY TAB FIRST
       </div>
     );
   }
@@ -78,19 +78,19 @@ const PredictionForm = ({ schema, onPredict }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="flex justify-between items-center border-b border-zinc-900 pb-2">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-amber-500">
-          [Feature Parameter Deck]
+        <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--accent-color)]">
+          Feature Parameter Deck
         </h3>
         <button
           type="button"
           onClick={handleClear}
-          className="text-zinc-500 hover:text-amber-500 font-mono text-[10px] uppercase transition"
+          className="text-zinc-500 hover:text-[var(--accent-color)] border border-zinc-850 hover:border-zinc-700 bg-zinc-950/40 hover:bg-zinc-900/60 px-2 py-0.5 text-[10px] font-mono uppercase transition rounded"
         >
-          [Reset Deck]
+          Reset Deck
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 max-h-[350px] overflow-y-auto pr-2">
+      <div className={`grid grid-cols-1 ${chatOpen ? "" : "md:grid-cols-2"} gap-x-6 gap-y-2 max-h-[350px] overflow-y-auto pr-2`}>
         {schema.features.map((field) => {
           const params = getFieldParams(field);
           if (params.type === "continuous") {
@@ -123,9 +123,9 @@ const PredictionForm = ({ schema, onPredict }) => {
 
       <button
         type="submit"
-        className="w-full bg-amber-500 hover:bg-amber-600 text-black uppercase font-bold py-3 transition text-sm tracking-wider font-mono rounded"
+        className="w-full bg-[var(--btn-bg)] hover:opacity-90 text-[var(--btn-text)] uppercase font-bold py-3 transition text-sm tracking-wider font-mono rounded"
       >
-        [EXECUTE SINGLE INFERENCE CALCULATOR]
+        EXECUTE SINGLE INFERENCE CALCULATOR
       </button>
     </form>
   );

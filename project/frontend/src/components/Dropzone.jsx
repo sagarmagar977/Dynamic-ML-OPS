@@ -49,7 +49,7 @@ const Dropzone = ({ label, accept, selectedFile, onFileSelect }) => {
       onDragLeave={handleDrag}
       onDrop={handleDrop}
       className={`border border-dashed p-4 rounded text-center transition flex flex-col justify-center items-center h-28 cursor-pointer relative ${
-        dragActive ? "border-amber-500 bg-amber-500/10" : "border-zinc-800 hover:border-zinc-600 bg-zinc-950/20"
+        dragActive ? "border-[var(--accent-color)] bg-[var(--accent-color)]/10" : "border-zinc-800 hover:border-zinc-600 bg-zinc-950/20"
       }`}
       onClick={onButtonClick}
     >

@@ -46,7 +46,7 @@ const BatchView = () => {
     setSuccess(false);
     try {
       const blob = await predictBatchCsv(csvFile);
-      
+
       // Download response stream
       const url = window.URL.createObjectURL(new Blob([blob]));
       const link = document.createElement("a");
@@ -55,7 +55,7 @@ const BatchView = () => {
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
-      
+
       setSuccess(true);
       setCsvFile(null); // Reset uploader
     } catch (err) {
@@ -68,8 +68,8 @@ const BatchView = () => {
   return (
     <div className="space-y-6 text-left">
       <div className="border-b border-zinc-950 pb-2">
-        <h2 className="text-md font-bold uppercase tracking-wider text-amber-500">
-          [Batch Ingestion Workspace]
+        <h2 className="text-md font-bold uppercase tracking-wider text-[var(--accent-color)]">
+          Batch Ingestion Workspace
         </h2>
         <p className="text-zinc-500 text-[10px] uppercase font-mono mt-1">
           Perform mass records processing via flat-file streaming
@@ -92,7 +92,7 @@ const BatchView = () => {
       <div
         onDragOver={handleDragOver}
         onDrop={handleDrop}
-        className="border-2 border-dashed border-zinc-800 hover:border-amber-500 bg-zinc-950/40 p-8 rounded text-center transition cursor-pointer relative"
+        className="border-2 border-dashed border-zinc-800 hover:border-[var(--accent-color)] bg-zinc-950/40 p-8 rounded text-center transition cursor-pointer relative"
       >
         <input
           type="file"
@@ -115,9 +115,9 @@ const BatchView = () => {
       <button
         onClick={handleExecute}
         disabled={loading || !csvFile}
-        className="w-full bg-amber-500 text-black font-extrabold uppercase py-4 transition text-xs tracking-widest font-mono rounded hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full bg-[var(--btn-bg)] text-[var(--btn-text)] font-extrabold uppercase py-4 transition text-xs tracking-widest font-mono rounded hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {loading ? "[STREAMING INFERENCE CHANNELS...]" : "EXECUTE BATCH INFERENCE & DOWNLOAD"}
+        {loading ? "STREAMING INFERENCE CHANNELS..." : "EXECUTE BATCH INFERENCE & DOWNLOAD"}
       </button>
     </div>
   );

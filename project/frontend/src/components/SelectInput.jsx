@@ -18,14 +18,14 @@ const SelectInput = ({ name, label, options, value, onChange }) => {
   });
 
   return (
-    <div className="flex flex-col space-y-1 py-2 border-b border-zinc-900">
+    <div className="flex flex-col space-y-1 py-2 border-b border-[var(--border-color)]">
       <label className="text-zinc-400 text-xs uppercase font-semibold tracking-wider text-left">
         {label || name}
       </label>
       <select
         value={value !== undefined ? value : ""}
         onChange={handleChange}
-        className="w-full bg-black text-amber-500 border border-zinc-800 text-xs px-2 py-2 font-mono rounded cursor-pointer focus:border-amber-500 focus:outline-none"
+        className="w-full bg-[var(--panel-bg)] text-[var(--text-color)] border border-[var(--border-color)] text-xs px-2 py-2 font-mono rounded cursor-pointer focus:border-[var(--accent-color)] focus:outline-none"
       >
         <option value="" disabled>-- SELECT AN OPTION --</option>
         {parsedOptions.map((opt, i) => (

@@ -67,10 +67,17 @@ def predict(input_data: PredictionInput):
             raw_pred = pred_list[0]
             meta_classes = metadata.get("classes", [])
             
-            # If Iris dataset classes are 0, 1, 2, they map to Iris-setosa etc
-            if isinstance(raw_pred, (int, np.integer)) and raw_pred < len(meta_classes):
-                result["prediction_label"] = meta_classes[raw_pred]
-            else:
+            # Robust mapping for both integer indexes and direct string/numeric matches
+            mapped = False
+            try:
+                idx = int(float(raw_pred))
+                if 0 <= idx < len(meta_classes) and float(raw_pred) == idx:
+                    result["prediction_label"] = meta_classes[idx]
+                    mapped = True
+            except (ValueError, TypeError):
+                pass
+                
+            if not mapped:
                 result["prediction_label"] = str(raw_pred)
                 
         return result

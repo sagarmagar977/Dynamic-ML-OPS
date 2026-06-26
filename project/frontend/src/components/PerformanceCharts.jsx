@@ -5,7 +5,7 @@ const PerformanceCharts = ({ schema }) => {
   if (!schema || !schema.task_type) {
     return (
       <div className="text-zinc-600 font-mono text-center py-10">
-        [ACTIVATE A MODEL TO GENERATE PERFORMANCE console CHARTS]
+        ACTIVATE A MODEL TO GENERATE PERFORMANCE console CHARTS
       </div>
     );
   }
@@ -29,13 +29,13 @@ const PerformanceCharts = ({ schema }) => {
           <h3 className="text-xs text-zinc-400 font-bold uppercase tracking-wider">
             [Interactive Confusion Matrix Map]
           </h3>
-          
+
           <div className="flex flex-col items-center py-4">
             <div className="grid grid-cols-4 gap-1 w-64 text-center font-mono text-[9px]">
               {/* Header Empty Corner */}
               <div></div>
               {classes.map((cls) => (
-                <div key={`header-${cls}`} className="text-amber-500 font-bold uppercase truncate max-w-[60px]" title={cls}>
+                <div key={`header-${cls}`} className="text-[var(--accent-color)] font-bold uppercase truncate max-w-[60px]" title={cls}>
                   {cls}
                 </div>
               ))}
@@ -44,7 +44,7 @@ const PerformanceCharts = ({ schema }) => {
               {classes.map((actualCls, rowIdx) => (
                 <React.Fragment key={`row-${actualCls}`}>
                   {/* Left Label Header */}
-                  <div className="text-amber-500 font-bold uppercase flex items-center justify-end pr-2 truncate max-w-[60px]" title={actualCls}>
+                  <div className="text-[var(--accent-color)] font-bold uppercase flex items-center justify-end pr-2 truncate max-w-[60px]" title={actualCls}>
                     {actualCls}
                   </div>
                   {classes.map((predCls, colIdx) => {
@@ -52,7 +52,7 @@ const PerformanceCharts = ({ schema }) => {
                     // Calculate background opacity based on relative value density
                     const intensity = val / maxCM;
                     const isDiagonal = rowIdx === colIdx;
-                    
+
                     return (
                       <div
                         key={`cell-${rowIdx}-${colIdx}`}
@@ -66,10 +66,10 @@ const PerformanceCharts = ({ schema }) => {
                         <span className="text-xs font-bold text-white font-mono">
                           {val}
                         </span>
-                        
+
                         {/* Hover Tooltip */}
                         <div className="hidden group-hover:block absolute bottom-full bg-black border border-zinc-700 text-[8px] text-zinc-400 p-2 rounded whitespace-nowrap z-10 pointer-events-none">
-                          Act: {actualCls} / Pred: {predCls} <br/> Count: {val}
+                          Act: {actualCls} / Pred: {predCls} <br /> Count: {val}
                         </div>
                       </div>
                     );
@@ -77,7 +77,7 @@ const PerformanceCharts = ({ schema }) => {
                 </React.Fragment>
               ))}
             </div>
-            
+
             <div className="flex justify-between w-64 text-[8px] text-zinc-500 uppercase mt-4 font-mono">
               <span>← Actual labels</span>
               <span>Predicted labels ↑</span>
@@ -90,7 +90,7 @@ const PerformanceCharts = ({ schema }) => {
           <h3 className="text-xs text-zinc-400 font-bold uppercase tracking-wider">
             [Feature Importance Weights Deck]
           </h3>
-          
+
           <div className="space-y-4 py-3">
             {Object.entries(fi)
               .sort((a, b) => b[1] - a[1])
@@ -100,11 +100,11 @@ const PerformanceCharts = ({ schema }) => {
                   <div key={name} className="space-y-1 font-mono text-xs">
                     <div className="flex justify-between text-[10px]">
                       <span className="text-zinc-300 font-semibold">{name}</span>
-                      <span className="text-amber-500">{percent}%</span>
+                      <span className="text-[var(--accent-color)]">{percent}%</span>
                     </div>
                     <div className="w-full h-3 bg-zinc-900 border border-zinc-800 rounded overflow-hidden">
                       <div
-                        className="h-full bg-amber-500/80 transition-all duration-700"
+                        className="h-full bg-[var(--accent-color)]/80 transition-all duration-700"
                         style={{ width: `${percent}%` }}
                       ></div>
                     </div>
@@ -150,9 +150,9 @@ const PerformanceCharts = ({ schema }) => {
         {/* Predicted vs Actual Scatter Plot */}
         <div className="border border-zinc-900 bg-zinc-950 p-4 rounded space-y-3">
           <h3 className="text-xs text-zinc-400 font-bold uppercase tracking-wider">
-            [Predicted vs. Actual Target Scatter]
+            Predicted vs. Actual Target Scatter
           </h3>
-          
+
           <div className="relative pt-2">
             <svg viewBox="0 0 300 220" className="w-full bg-black rounded border border-zinc-900">
               {/* Diagonal baseline (y = x) */}
@@ -161,7 +161,7 @@ const PerformanceCharts = ({ schema }) => {
                 y1={220 - mapCoords(minVal, minVal, maxVal, 220)}
                 x2={mapCoords(maxVal, minVal, maxVal, 300)}
                 y2={220 - mapCoords(maxVal, minVal, maxVal, 220)}
-                stroke="#FF9F00"
+                stroke="var(--accent-color)"
                 strokeWidth="1"
                 strokeDasharray="4 4"
                 opacity="0.4"
@@ -177,8 +177,9 @@ const PerformanceCharts = ({ schema }) => {
                     cx={cx}
                     cy={cy}
                     r="3.5"
-                    fill="rgba(255, 159, 0, 0.75)"
-                    stroke="#FF9F00"
+                    fill="var(--accent-color)"
+                    opacity="0.75"
+                    stroke="var(--accent-color)"
                     strokeWidth="0.5"
                     className="hover:r-5 transition duration-200 cursor-pointer"
                   >
@@ -197,9 +198,9 @@ const PerformanceCharts = ({ schema }) => {
         {/* Residual Deviation Error Charts */}
         <div className="border border-zinc-900 bg-zinc-950 p-4 rounded space-y-3">
           <h3 className="text-xs text-zinc-400 font-bold uppercase tracking-wider">
-            [Residual Errors Plot]
+            Residual Errors Plot
           </h3>
-          
+
           <div className="relative pt-2">
             <svg viewBox="0 0 300 220" className="w-full bg-black rounded border border-zinc-900">
               {/* Zero error baseline */}
@@ -247,8 +248,8 @@ const PerformanceCharts = ({ schema }) => {
   return (
     <div className="space-y-4">
       <div className="border-b border-zinc-900 pb-2">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-amber-500">
-          [System Analytics Diagnostics Console]
+        <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--accent-color)]">
+          System Analytics Diagnostics Console
         </h2>
       </div>
 

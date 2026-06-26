@@ -11,6 +11,7 @@ const ModelManager = ({ models, activeModelId, onRefresh, onActivate }) => {
   const [uploadLoading, setUploadLoading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [colabLink, setColabLink] = useState("");
 
   // Class Image Upload state
   const [selectedClassModelId, setSelectedClassModelId] = useState(null);
@@ -99,7 +100,7 @@ const ModelManager = ({ models, activeModelId, onRefresh, onActivate }) => {
     try {
       // 1. Deploy/Mount model first
       const modelIdTrimmed = newModelId.trim();
-      await deployModel(modelIdTrimmed, modelFile, metadataFile);
+      await deployModel(modelIdTrimmed, modelFile, metadataFile, colabLink.trim());
 
       // 2. If classification and user checked to add images, upload them using mapped class name
       if (inspectedData?.task_type === "classification" && wantClassImages) {
@@ -121,6 +122,7 @@ const ModelManager = ({ models, activeModelId, onRefresh, onActivate }) => {
 
       setUploadSuccess(true);
       setNewModelId("");
+      setColabLink("");
       setModelFile(null);
       setMetadataFile(null);
       setInspectedData(null);
@@ -182,21 +184,21 @@ const ModelManager = ({ models, activeModelId, onRefresh, onActivate }) => {
       {/* Upload/Deploy Box */}
       <div className="border border-zinc-900 bg-zinc-950 p-5 rounded space-y-4">
         <div className="flex justify-between items-center border-b border-zinc-900 pb-2">
-          <h3 className="text-xs text-amber-500 font-bold uppercase tracking-wider">
-            [Dual-Asset Registry Pipeline]
+          <h3 className="text-xs text-[var(--accent-color)] font-bold uppercase tracking-wider">
+            Dual-Asset Registry Pipeline
           </h3>
           <button
             type="button"
             onClick={() => setShowHelper(!showHelper)}
-            className="text-[10px] text-zinc-500 hover:text-amber-500 font-mono transition uppercase font-semibold border border-zinc-800 hover:border-amber-500 px-2 py-0.5 rounded"
+            className="text-[10px] text-zinc-500 hover:text-[var(--accent-color)] font-mono transition uppercase font-semibold border border-zinc-800 hover:border-[var(--accent-color)] px-2 py-0.5 rounded"
           >
-            {showHelper ? "[HIDE PYTHON HELP]" : "[SHOW PYTHON HELP]"}
+            {showHelper ? "HIDE PYTHON HELP" : "SHOW PYTHON HELP"}
           </button>
         </div>
 
         {showHelper && (
           <div className="border border-zinc-800 bg-black/60 p-4 rounded font-mono text-[11px] text-zinc-400 space-y-3">
-            <div className="text-amber-500 font-semibold">[HOW TO PREPARE ARTIFACTS FOR DEPLOYMENT]</div>
+            <div className="text-[var(--accent-color)] font-semibold">[HOW TO PREPARE ARTIFACTS FOR DEPLOYMENT]</div>
             <p>Run this code in your Jupyter or Colab notebook to generate perfectly compatible assets:</p>
             <pre className="bg-zinc-950 p-3 rounded text-zinc-300 overflow-x-auto text-[10px] border border-zinc-900 leading-relaxed">
               {`# 1. Export your trained model
@@ -238,17 +240,31 @@ with open("metadata.json", "w") as f:
         )}
 
         <form onSubmit={handleDeploy} className="space-y-4">
-          <div className="flex flex-col space-y-1">
-            <label className="text-[10px] text-zinc-500 uppercase font-semibold">
-              Assign Model Identity Code
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. iris_classifier_v3"
-              value={newModelId}
-              onChange={(e) => setNewModelId(e.target.value)}
-              className="bg-black text-amber-500 border border-zinc-900 text-xs px-3 py-2 font-mono rounded focus:border-amber-500 focus:outline-none w-full"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col space-y-1">
+              <label className="text-[10px] text-zinc-500 uppercase font-semibold">
+                Assign Model Identity Code
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. iris_classifier_v3"
+                value={newModelId}
+                onChange={(e) => setNewModelId(e.target.value)}
+                className="bg-black text-[var(--accent-color)] border border-zinc-900 text-xs px-3 py-2 font-mono rounded focus:border-[var(--accent-color)] focus:outline-none w-full"
+              />
+            </div>
+            <div className="flex flex-col space-y-1">
+              <label className="text-[10px] text-zinc-500 uppercase font-semibold">
+                Google Colab Link (Optional)
+              </label>
+              <input
+                type="url"
+                placeholder="https://colab.research.google.com/..."
+                value={colabLink}
+                onChange={(e) => setColabLink(e.target.value)}
+                className="bg-black text-[var(--accent-color)] border border-zinc-900 text-xs px-3 py-2 font-mono rounded focus:border-[var(--accent-color)] focus:outline-none w-full"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -275,7 +291,7 @@ with open("metadata.json", "w") as f:
           {inspectedData && (
             <div className="border border-zinc-900 bg-black/40 p-3 rounded space-y-3">
               <div className="flex items-center space-x-2">
-                <span className="text-[10px] font-mono uppercase bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded text-amber-500 font-semibold">
+                <span className="text-[10px] font-mono uppercase bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded text-[var(--accent-color)] font-semibold">
                   Task Type: {inspectedData.task_type}
                 </span>
                 {inspectedData.task_type === "classification" && (
@@ -292,7 +308,7 @@ with open("metadata.json", "w") as f:
                       type="checkbox"
                       checked={wantClassImages}
                       onChange={(e) => setWantClassImages(e.target.checked)}
-                      className="accent-amber-500 bg-black border border-zinc-900"
+                      className="accent-[var(--accent-color)] bg-black border border-zinc-900"
                     />
                     <span>Associate custom token images with target classes?</span>
                   </label>
@@ -316,7 +332,7 @@ with open("metadata.json", "w") as f:
                                   setClassImages((prev) => ({ ...prev, [cls]: file }));
                                 }
                               }}
-                              className="bg-black text-zinc-400 border border-zinc-900 text-[10px] p-1 font-mono rounded file:bg-zinc-900 file:text-amber-500 file:border-none file:text-[9px] file:uppercase file:font-semibold file:px-2 file:py-1 file:mr-2 file:rounded file:cursor-pointer"
+                              className="bg-black text-zinc-400 border border-zinc-900 text-[10px] p-1 font-mono rounded file:bg-zinc-900 file:text-[var(--accent-color)] file:border-none file:text-[9px] file:uppercase file:font-semibold file:px-2 file:py-1 file:mr-2 file:rounded file:cursor-pointer"
                             />
                             {classImages[cls] && (
                               <span className="text-[9px] text-green-500 font-mono">
@@ -339,7 +355,7 @@ with open("metadata.json", "w") as f:
               id="autoActivate"
               checked={autoActivate}
               onChange={(e) => setAutoActivate(e.target.checked)}
-              className="accent-amber-500 bg-black border border-zinc-900 cursor-pointer"
+              className="accent-[var(--accent-color)] bg-black border border-zinc-900 cursor-pointer"
             />
             <label htmlFor="autoActivate" className="text-[10px] text-zinc-400 font-mono select-none cursor-pointer uppercase font-semibold">
               Activate model automatically upon deployment?
@@ -349,9 +365,9 @@ with open("metadata.json", "w") as f:
           <button
             type="submit"
             disabled={uploadLoading || !newModelId || !modelFile}
-            className="w-full bg-amber-500 hover:bg-amber-600 text-black uppercase font-bold py-2 font-mono text-xs tracking-widest transition rounded disabled:opacity-50"
+            className="w-full bg-[var(--btn-bg)] hover:opacity-90 text-[var(--btn-text)] uppercase font-bold py-2 font-mono text-xs tracking-widest transition rounded disabled:opacity-50"
           >
-            {uploadLoading ? "[MOUNTING CHANNELS...]" : "MOUNT NEW ARTIFACTS"}
+            {uploadLoading ? "MOUNTING CHANNELS..." : "MOUNT NEW ARTIFACTS"}
           </button>
         </form>
       </div>
@@ -359,15 +375,15 @@ with open("metadata.json", "w") as f:
       {/* Models Inventory Ledger Grid */}
       <div className="border border-zinc-900 bg-zinc-950 p-5 rounded space-y-4">
         <div className="flex justify-between items-center border-b border-zinc-900 pb-2">
-          <h3 className="text-xs text-amber-500 font-bold uppercase tracking-wider">
-            [ARTIFACTS]
+          <h3 className="text-xs text-[var(--accent-color)] font-bold uppercase tracking-wider">
+            ARTIFACTS
           </h3>
           <div className="flex items-center space-x-2 text-[10px] text-zinc-500 font-mono">
             <span>SORT:</span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="bg-black text-amber-500 border border-zinc-800 text-[10px] px-2 py-0.5 rounded focus:outline-none focus:border-amber-500"
+              className="bg-black text-[var(--accent-color)] border border-zinc-800 text-[10px] px-2 py-0.5 rounded focus:outline-none focus:border-[var(--accent-color)]"
             >
               <option value="newest">NEWEST FIRST</option>
               <option value="oldest">OLDEST FIRST</option>
@@ -376,13 +392,13 @@ with open("metadata.json", "w") as f:
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
           <table className="w-full text-xs font-mono border-collapse text-zinc-400">
             <thead>
               <tr className="border-b border-zinc-900 text-zinc-500 text-left">
-                <th className="py-2 px-2 uppercase text-[10px]">Model Identity / Algorithm</th>
-                <th className="py-2 px-2 uppercase text-[10px]">Task Allocation</th>
+                <th className="py-2 px-2 uppercase text-[10px]">Model Registry Details</th>
                 <th className="py-2 px-2 uppercase text-[10px]">Baseline metrics</th>
+                <th className="py-2 px-2 uppercase text-[10px] text-center">Colab Link</th>
                 <th className="py-2 px-2 uppercase text-[10px]">Active Status</th>
                 <th className="py-2 px-2 uppercase text-[10px] text-right">Actions</th>
               </tr>
@@ -405,27 +421,41 @@ with open("metadata.json", "w") as f:
                   return sortedModels.map((model) => (
                     <tr key={model.id} className="border-b border-zinc-900/60 hover:bg-zinc-900/10">
                       <td className="py-3 px-2">
-                        <div className="text-white font-bold">{model.name}</div>
-                        <div className="text-[10px] text-zinc-500">{model.id} | {model.algorithm_variant}</div>
-                      </td>
-                      <td className="py-3 px-2 uppercase text-amber-600 font-bold">
-                        {model.task_type}
+                        <div className="text-white text-sm font-black tracking-wide">{model.name}</div>
+                        <div className="text-[10px] text-zinc-500 mt-0.5 font-mono">
+                          {model.id} • <span className="text-[var(--accent-color)] font-bold uppercase">{model.algorithm_variant}</span> ({model.task_type})
+                        </div>
                       </td>
                       <td className="py-3 px-2">
                         {Object.entries(model.metrics || {}).map(([m, val]) => (
                           <div key={m} className="text-[10px] whitespace-nowrap">
-                            {m.toUpperCase()}: {(val * 100).toFixed(1)}%
+                            {m.toUpperCase()}: {model.task_type === "classification" ? `${(val * 100).toFixed(1)}%` : val.toFixed(4)}
                           </div>
                         ))}
                       </td>
+                      <td className="py-3 px-2 text-center">
+                        {model.colab_link ? (
+                          <a
+                            href={model.colab_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block hover:scale-115 transition-transform text-[var(--accent-color)] text-sm font-bold"
+                            title={model.colab_link}
+                          >
+                            🔗
+                          </a>
+                        ) : (
+                          <span className="text-zinc-700 font-mono">-</span>
+                        )}
+                      </td>
                       <td className="py-3 px-2">
                         {model.active ? (
-                          <span className="inline-block px-2 py-0.5 border border-green-500 text-green-500 bg-green-950/20 text-[9px] uppercase font-bold rounded animate-pulse">
-                            [ONLINE]
+                          <span className="inline-block px-2 py-0.5 border border-green-500/30 text-green-400 bg-green-950/20 text-[9px] uppercase font-bold rounded animate-pulse">
+                            ACTIVE
                           </span>
                         ) : (
                           <span className="inline-block px-2 py-0.5 border border-zinc-800 text-zinc-600 bg-zinc-950 text-[9px] uppercase font-bold rounded">
-                            [COLD]
+                            COLD
                           </span>
                         )}
                       </td>
@@ -438,9 +468,9 @@ with open("metadata.json", "w") as f:
                                 setSelectedClassModelId(model.id);
                                 setSelectedClassName(model.classes[0]);
                               }}
-                              className="border border-zinc-800 hover:border-amber-500/50 text-[9px] text-zinc-500 hover:text-amber-500 px-2 py-0.5 rounded font-mono uppercase"
+                              className="border border-zinc-800 hover:border-[var(--accent-color)]/50 text-[9px] text-zinc-500 hover:text-[var(--accent-color)] px-2 py-0.5 rounded font-mono uppercase"
                             >
-                              [Visual Token]
+                              Visual Token
                             </button>
                           )}
 
@@ -459,20 +489,20 @@ with open("metadata.json", "w") as f:
                               onClick={() => handleActivate(model.id)}
                               className="w-full text-left px-3 py-1.5 hover:bg-zinc-900 text-green-500 font-bold block"
                             >
-                              [ACTIVATE]
+                              ACTIVATE
                             </button>
                             <button
                               onClick={() => setEditingModel(model)}
-                              className="w-full text-left px-3 py-1.5 hover:bg-zinc-900 text-amber-500 block"
+                              className="w-full text-left px-3 py-1.5 hover:bg-zinc-900 text-[var(--accent-color)] block"
                             >
-                              [EDIT]
+                              EDIT
                             </button>
                             <button
                               onClick={() => handleDelete(model.id)}
                               disabled={model.active}
                               className="w-full text-left px-3 py-1.5 hover:bg-zinc-900 text-red-500 disabled:opacity-30 block"
                             >
-                              [DELETE]
+                              DELETE
                             </button>
                           </div>
                         )}
@@ -489,16 +519,16 @@ with open("metadata.json", "w") as f:
       {/* Visual Token Custom Image Uploader Modal Overlay */}
       {selectedClassModelId && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="w-full max-w-sm bg-zinc-950 border border-amber-500 rounded p-5 space-y-4 shadow-xl">
+          <div className="w-full max-w-sm bg-zinc-950 border border-[var(--accent-color)] rounded p-5 space-y-4 shadow-xl">
             <div className="flex justify-between items-center border-b border-zinc-900 pb-2">
-              <h4 className="text-xs text-amber-500 font-bold uppercase tracking-wider">
+              <h4 className="text-xs text-[var(--accent-color)] font-bold uppercase tracking-wider">
                 [Upload Category Token]
               </h4>
               <button
                 onClick={() => setSelectedClassModelId(null)}
-                className="text-zinc-500 font-mono text-xs"
+                className="text-zinc-500 hover:text-white hover:bg-zinc-900 border border-zinc-800 text-xs font-mono px-2 py-0.5 rounded transition"
               >
-                [X]
+                X
               </button>
             </div>
 
@@ -508,7 +538,7 @@ with open("metadata.json", "w") as f:
                 <select
                   value={selectedClassName}
                   onChange={(e) => setSelectedClassName(e.target.value)}
-                  className="bg-black text-amber-500 border border-zinc-900 w-full p-2 text-xs font-mono rounded"
+                  className="bg-black text-[var(--accent-color)] border border-zinc-900 w-full p-2 text-xs font-mono rounded"
                 >
                   {models
                     .find((m) => m.id === selectedClassModelId)
@@ -538,14 +568,14 @@ with open("metadata.json", "w") as f:
                   onClick={() => setSelectedClassModelId(null)}
                   className="flex-1 border border-zinc-800 text-zinc-400 py-1.5 uppercase text-xs font-mono rounded hover:bg-zinc-900"
                 >
-                  [Cancel]
+                  Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={classUploadLoading || !classImageFile}
-                  className="flex-1 bg-amber-500 text-black font-bold py-1.5 uppercase text-xs font-mono rounded hover:bg-amber-600 disabled:opacity-50"
+                  className="flex-1 bg-[var(--btn-bg)] text-[var(--btn-text)] font-bold py-1.5 uppercase text-xs font-mono rounded hover:opacity-90 disabled:opacity-50"
                 >
-                  {classUploadLoading ? "[Uploading...]" : "[Upload Token]"}
+                  {classUploadLoading ? "Uploading..." : "Upload Token"}
                 </button>
               </div>
             </form>

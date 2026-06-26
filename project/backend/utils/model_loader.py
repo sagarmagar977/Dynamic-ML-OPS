@@ -24,6 +24,35 @@ class ModelManager:
         joblib_path = os.path.join(model_dir, "model.joblib")
         metadata_path = os.path.join(model_dir, "metadata.json")
         
+        # Check if files exist locally. If they do not, try downloading from Supabase Storage
+        if not os.path.exists(joblib_path) or not os.path.exists(metadata_path):
+            from backend.supabase_client import supabase, SUPABASE_URL, key
+            is_dummy = (supabase.__class__.__name__ == "DummyClient" or 
+                        not SUPABASE_URL or 
+                        "YOUR_SUPABASE_URL" in SUPABASE_URL or
+                        not key or 
+                        "YOUR_ANON_KEY" in key)
+            
+            if not is_dummy:
+                os.makedirs(model_dir, exist_ok=True)
+                if not os.path.exists(joblib_path):
+                    try:
+                        res = supabase.storage.from_("models").download(f"{model_id}/model.joblib")
+                        if res:
+                            with open(joblib_path, "wb") as f:
+                                f.write(res)
+                    except Exception as e:
+                        print(f"Failed to download model.joblib from Supabase Storage: {e}")
+                
+                if not os.path.exists(metadata_path):
+                    try:
+                        res = supabase.storage.from_("models").download(f"{model_id}/metadata.json")
+                        if res:
+                            with open(metadata_path, "wb") as f:
+                                f.write(res)
+                    except Exception as e:
+                        print(f"Failed to download metadata.json from Supabase Storage: {e}")
+
         if not os.path.exists(joblib_path):
             raise FileNotFoundError(f"Model file {joblib_path} does not exist.")
         if not os.path.exists(metadata_path):

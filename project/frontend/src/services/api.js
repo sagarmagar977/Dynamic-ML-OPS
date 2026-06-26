@@ -28,12 +28,15 @@ export const unloadModel = async () => {
   return data;
 };
 
-export const deployModel = async (modelId, modelFile, metadataFile) => {
+export const deployModel = async (modelId, modelFile, metadataFile, colabLink) => {
   const formData = new FormData();
   formData.append("model_id", modelId);
   formData.append("model_file", modelFile);
   if (metadataFile) {
     formData.append("metadata_file", metadataFile);
+  }
+  if (colabLink) {
+    formData.append("colab_link", colabLink);
   }
   
   const { data } = await axios.post(`${API_BASE}/models/deploy`, formData, {
@@ -44,10 +47,14 @@ export const deployModel = async (modelId, modelFile, metadataFile) => {
   return data;
 };
 
-export const editModel = async (modelId, modelFile, metadataFile) => {
+export const editModel = async (modelId, modelFile, metadataFile, modelName, colabLink) => {
   const formData = new FormData();
   if (modelFile) formData.append("model_file", modelFile);
   if (metadataFile) formData.append("metadata_file", metadataFile);
+  if (modelName) formData.append("model_name", modelName);
+  if (colabLink !== undefined && colabLink !== null) {
+    formData.append("colab_link", colabLink);
+  }
   
   const { data } = await axios.post(`${API_BASE}/models/${modelId}/edit`, formData, {
     headers: {
@@ -103,5 +110,44 @@ export const inspectModel = async (modelFile) => {
       "Content-Type": "multipart/form-data",
     },
   });
+  return data;
+};
+
+export const sendAgentMessage = async (message, history, modelId, apiKey) => {
+  const { data } = await axios.post(
+    `${API_BASE}/agent/chat`,
+    { message, history, model_id: modelId },
+    {
+      headers: {
+        "X-Gemini-Key": apiKey,
+      },
+    }
+  );
+  return data;
+};
+
+// Supabase DB Operations via Backend Proxy
+export const fetchSupabaseStatus = async () => {
+  const { data } = await axios.get(`${API_BASE}/supabase/status`);
+  return data;
+};
+
+export const fetchSupabaseItems = async () => {
+  const { data } = await axios.get(`${API_BASE}/supabase/items`);
+  return data;
+};
+
+export const createSupabaseItem = async (name) => {
+  const { data } = await axios.post(`${API_BASE}/supabase/items`, { name });
+  return data;
+};
+
+export const updateSupabaseItem = async (itemId, name) => {
+  const { data } = await axios.put(`${API_BASE}/supabase/items/${itemId}`, { name });
+  return data;
+};
+
+export const deleteSupabaseItem = async (itemId) => {
+  const { data } = await axios.delete(`${API_BASE}/supabase/items/${itemId}`);
   return data;
 };

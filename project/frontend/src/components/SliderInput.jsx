@@ -21,7 +21,7 @@ const SliderInput = ({ name, label, min, max, step, value, onChange }) => {
   const currentValue = value !== undefined && value !== "" ? value : (min + max) / 2;
 
   return (
-    <div className="flex flex-col space-y-1 py-2 border-b border-zinc-900">
+    <div className="flex flex-col space-y-1 py-2 border-b border-[var(--border-color)]">
       <div className="flex justify-between items-center">
         <label className="text-zinc-400 text-xs uppercase font-semibold tracking-wider">
           {label || name}
@@ -39,7 +39,7 @@ const SliderInput = ({ name, label, min, max, step, value, onChange }) => {
           step={step}
           value={currentValue}
           onChange={handleSliderChange}
-          className="flex-1 accent-amber-500 cursor-pointer"
+          className="flex-1 accent-[var(--accent-color)] cursor-pointer"
         />
         <input
           type="number"
@@ -48,7 +48,7 @@ const SliderInput = ({ name, label, min, max, step, value, onChange }) => {
           step={step}
           value={value !== undefined ? value : ""}
           onChange={handleInputChange}
-          className="w-20 bg-black text-amber-500 border border-zinc-800 text-xs px-2 py-1 text-center font-mono rounded focus:border-amber-500 focus:outline-none"
+          className="w-20 bg-[var(--panel-bg)] text-[var(--text-color)] border border-[var(--border-color)] text-xs px-2 py-1 text-center font-mono rounded focus:border-[var(--accent-color)] focus:outline-none"
         />
       </div>
     </div>
