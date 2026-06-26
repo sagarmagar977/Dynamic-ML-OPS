@@ -47,6 +47,8 @@ async def chat_with_agent(
         "- 'activate': Select this if the user asks to activate a model by ID. Put the model ID in 'activate_model_id'.\n"
         "- 'list_models': Select this if the user asks to list, show, or ledger all models.\n"
         "- 'chat': Default chat fallback for discussions, explanations, or inquiries.\n\n"
+        "WEBAPP CONTROL INSTRUCTION:\n"
+        "When the user requests you to change state, list, or activate a model, inform them that you are taking control of the webapp to perform this action. The UI will automatically update based on your command.\n"
     )
 
     if active_model_data:
@@ -62,7 +64,7 @@ async def chat_with_agent(
             f"- Classes (if classification): {', '.join(meta.get('classes', []))}\n\n"
             "INSTRUCTIONS:\n"
             "1. When the user asks to predict or provides a sequence of numbers (e.g. '5.1, 3.5, 1.4, 0.2' or describes feature values), set action='predict' and extract the floats in 'prediction_features' exactly matching the expected feature count and order.\n"
-            "2. When explaining prediction outcomes, analyze the prediction results, metrics, and probability confidence.\n"
+            "2. When explaining prediction outcomes, explain exactly WHY this result occurred. Analyze the input features supplied by the user (e.g., 'because your feature X is high and feature Y is low, which correlates to this output class based on training correlations'). Keep explanation highly analytical and specific to the features.\n"
         )
     else:
         system_instruction += (
