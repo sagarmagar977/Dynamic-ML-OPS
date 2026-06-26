@@ -6,19 +6,11 @@ app = FastAPI(title="OmniPredictor")
 
 import os
 
-# CORS middleware - read allowed origins from environment
-frontend_url = os.environ.get("FRONTEND_URL")
-if frontend_url:
-    origins = [o.strip().rstrip("/") for o in frontend_url.split(",")]
-    # Include localhost for local frontend dev convenience
-    origins.extend(["http://localhost:5173", "http://localhost:3000", "http://localhost:5173/", "http://localhost:3000/"])
-else:
-    origins = ["*"]
-
+# CORS middleware - allow all origins to prevent CORS blocks in production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True if frontend_url else False,  # Credentials must not be True when wildcard "*" is used
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
