@@ -46,19 +46,6 @@ body.theme-cyberos {
   --scrollbar-hover: #b55400;
 }
 
-body.theme-gameboy {
-  --bg-color: #161026;
-  --panel-bg: #211936;
-  --text-color: #bfa5e6;
-  --accent-color: #7b59c2;
-  --border-color: #2d2247;
-  --card-border: #2d2247;
-  --btn-bg: #7b59c2;
-  --btn-text: #ffffff;
-  --glow-color: rgba(123, 89, 194, 0.15);
-  --scrollbar-thumb: #2d2247;
-  --scrollbar-hover: #211936;
-}
 
 body.theme-dashboard {
   --bg-color: #131b2e;
@@ -116,9 +103,6 @@ body.theme-cyberos, body.theme-cyberos * {
   font-family: 'Fira Code', monospace !important;
 }
 
-body.theme-gameboy, body.theme-gameboy * {
-  font-family: 'VT323', monospace !important;
-}
 
 
 body {
@@ -218,98 +202,6 @@ input[type="range"]::-moz-range-thumb {
   background: var(--scrollbar-hover);
 }
 
-/* Game Boy Console Specific Styles */
-.gba-lcd-screen {
-  background-color: #c8d3a5 !important; /* Classic green-tint LCD screen */
-  color: #1a230a !important;
-  font-family: 'Fira Code', 'Courier New', monospace;
-  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.35);
-  background-image: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.06) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
-  background-size: 100% 3px, 6px 100%;
-}
-
-.gba-lcd-screen * {
-  color: #1a230a !important;
-  border-color: rgba(26, 35, 10, 0.25) !important;
-  background-color: transparent !important;
-}
-
-.gba-lcd-screen input, .gba-lcd-screen select, .gba-lcd-screen textarea, .gba-lcd-screen button {
-  background-color: rgba(26, 35, 10, 0.08) !important;
-  border: 1px solid #1a230a !important;
-  color: #1a230a !important;
-}
-
-.gba-lcd-screen input[type="range"] {
-  background: rgba(26, 35, 10, 0.15) !important;
-}
-
-.gba-lcd-screen input[type="range"]::-webkit-slider-thumb {
-  background: #1a230a !important;
-  box-shadow: none !important;
-}
-
-.gba-lcd-screen ::-webkit-scrollbar-thumb {
-  background: #1a230a !important;
-}
-
-.gba-lcd-screen ::-webkit-scrollbar-track {
-  background: rgba(26, 35, 10, 0.05) !important;
-}
-
-.gba-dpad-container {
-  position: relative;
-  width: 96px;
-  height: 96px;
-}
-
-.gba-dpad-cross {
-  background: #252427;
-  border-radius: 6px;
-  box-shadow: 0 4px 0px #121114, inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-.gba-btn-round {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: #a3263a; /* GBA burgundy red */
-  border: 2px solid #580d19;
-  box-shadow: 0 4px 0 #3d050f, inset 0 1px 0 rgba(255, 255, 255, 0.25);
-  transition: transform 0.05s ease, box-shadow 0.05s ease;
-}
-
-.gba-btn-round:active {
-  transform: translateY(3px);
-  box-shadow: 0 1px 0 #3d050f;
-}
-
-.gba-btn-pill {
-  width: 42px;
-  height: 12px;
-  border-radius: 6px;
-  background: #2f2e33;
-  border: 1px solid #19181c;
-  box-shadow: 0 2px 0 #0f0e11;
-  transform: rotate(-28deg);
-}
-
-.gba-btn-pill:active {
-  transform: rotate(-28deg) translateY(1px);
-  box-shadow: 0 1px 0 #0f0e11;
-}
-
-.gba-scanlines {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background: linear-gradient(
-    rgba(18, 16, 16, 0) 50%, 
-    rgba(0, 0, 0, 0.12) 50%
-  );
-  background-size: 100% 4px;
-  z-index: 10;
-  pointer-events: none;
-}
 
 .cyberos-double-border {
   border: 4px double var(--border-color) !important;

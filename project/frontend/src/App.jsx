@@ -7,11 +7,10 @@ import PredictionResult from "./components/PredictionResult";
 import PerformanceCharts from "./components/PerformanceCharts";
 import BatchView from "./components/BatchView";
 import AgentChat from "./components/AgentChat";
-import GameBoyConsole from "./components/GameBoyConsole";
 
 function App() {
   const [activeTab, setActiveTab] = useState("inference");
-  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "theme-cyberos");
+  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "theme-terminal");
   const [models, setModels] = useState([]);
   const [activeModelId, setActiveModelId] = useState(null);
   const [activeSchema, setActiveSchema] = useState(null);
@@ -50,6 +49,12 @@ function App() {
 
   const handleActivateModel = async (id) => {
     setPredictionResult(null);
+    if (!id) {
+      setActiveModelId(null);
+      setActiveSchema(null);
+      loadModelsList();
+      return;
+    }
     try {
       setActiveModelId(id);
       const meta = await fetchModelInfo(id);
@@ -87,6 +92,22 @@ function App() {
     }
   };
 
+  const handleDeactivateActiveModel = async () => {
+    if (!activeModelId) return;
+    try {
+      setLoading(true);
+      await unloadModel();
+      setActiveModelId(null);
+      setActiveSchema(null);
+      setPredictionResult(null);
+      await loadModelsList();
+    } catch (err) {
+      alert("Deactivation failed: " + (err.response?.data?.detail || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handlePredict = async (features) => {
     setLoading(true);
     setPredictionResult(null);
@@ -115,24 +136,6 @@ function App() {
 
   const stats = getStats();
 
-  if (theme === "theme-gameboy") {
-    return (
-      <GameBoyConsole
-        models={models}
-        activeModelId={activeModelId}
-        activeSchema={activeSchema}
-        predictionResult={predictionResult}
-        loading={loading}
-        error={error}
-        handleActivateModel={handleActivateModel}
-        handlePredict={handlePredict}
-        loadModelsList={loadModelsList}
-        handleDeRegisterActiveModel={handleDeRegisterActiveModel}
-        theme={theme}
-        setTheme={setTheme}
-      />
-    );
-  }
 
   // Helper to render active tab views
   const renderTabContent = () => {
@@ -250,7 +253,6 @@ function App() {
             >
               <option value="theme-cyberos" className="bg-[#121214] text-[#e07700]">CYBER OS</option>
               <option value="theme-terminal" className="bg-[#1a1a1e] text-[#e08c00]">TERMINAL</option>
-              <option value="theme-gameboy" className="bg-[#150d22] text-[#513b8a]">GAME BOY</option>
               <option value="theme-dashboard" className="bg-[#1e1e20] text-[#e2e8f0]">DASHBOARD</option>
             </select>
           </div>
@@ -265,7 +267,7 @@ function App() {
       <div className="flex-1 flex flex-col md:flex-row min-h-0 min-w-0 overflow-y-auto md:overflow-hidden">
         {/* If CyberOS, show navigation sidebar. Otherwise show standard stats panel sidebar */}
         {theme === "theme-cyberos" ? (
-          <aside className="w-full md:w-64 border-b md:border-b-0 md:border-r border-double border-[var(--border-color)] bg-[var(--panel-bg)]/60 p-4 md:p-5 flex flex-col justify-between shrink-0 select-none text-left">
+          <aside className="w-full md:w-64 border-b md:border-b-0 md:border-r border-double border-[var(--border-color)] bg-[var(--panel-bg)]/60 p-4 md:p-5 flex flex-col justify-between shrink-0 select-none text-left overflow-y-auto md:max-h-none max-h-[300px]">
             <div className="space-y-6">
               <div className="pb-2 border-b border-[var(--border-color)]">
                 <div className="text-[var(--text-color)] text-sm font-black tracking-widest uppercase">
@@ -275,10 +277,10 @@ function App() {
 
               <nav className="flex flex-col space-y-2 text-xs uppercase font-bold">
                 {[
-                  { name: "Inference", tab: "inference" },
-                  { name: "Registry / Models", tab: "deploy" },
-                  { name: "Diagnostics / Charts", tab: "performance charts" },
-                  { name: "Batch Jobs", tab: "batch" }
+                  { name: "inference", tab: "inference" },
+                  { name: "performance charts", tab: "performance charts" },
+                  { name: "batch", tab: "batch" },
+                  { name: "deploy", tab: "deploy" }
                 ].map((opt) => {
                   const isActive = activeTab === opt.tab;
                   return (
@@ -297,18 +299,75 @@ function App() {
                   );
                 })}
               </nav>
+
+              <div className="border-t border-[var(--border-color)]/60 pt-4">
+                {stats ? (
+                  <div className="space-y-4 text-xs">
+                    <div>
+                      <span className="text-[10px] text-zinc-500 uppercase block font-semibold">
+                        IDENT
+                      </span>
+                      <span className="text-[var(--text-color)] font-bold tracking-wide break-all block">
+                        {stats.name}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] text-zinc-500 uppercase block font-semibold">
+                        PIPELINE
+                      </span>
+                      <span className="text-[var(--text-color)]/95 break-words block text-[11px]">
+                        {stats.pipeline}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] text-zinc-500 uppercase block font-semibold">
+                        TARGET
+                      </span>
+                      <span className="text-[var(--accent-color)] font-bold block uppercase">
+                        {stats.target}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      <span className="text-[10px] text-zinc-500 uppercase block font-semibold">
+                        Metrics Report
+                      </span>
+                      <div className="flex border border-[var(--border-color)] bg-black/40 divide-x divide-[var(--border-color)] rounded overflow-hidden shadow-sm">
+                        {Object.entries(stats.metrics).slice(0, 2).map(([key, val]) => (
+                          <div key={key} className="flex-1 p-2.5 text-center">
+                            <span className="text-[8px] text-zinc-500 block uppercase font-bold truncate">
+                              {key.replace("_", " ")}
+                            </span>
+                            <span className="text-xs font-black text-[var(--accent-color)] block mt-0.5">
+                              {stats.task_type === "classification"
+                                ? `${(val * 100).toFixed(0)}%`
+                                : val.toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-zinc-600 text-[11px] py-4 text-center">
+                    NO ACTIVE PIPELINE LOADED INTO INFERENCE REGISTERS
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-4">
-              {/* Quick Stats Summary */}
-              {stats && (
-                <div className="cyberos-double-border bg-black p-3 text-[10px] rounded space-y-1">
-                  <span className="text-zinc-500 block uppercase font-bold">ACTIVE:</span>
-                  <span className="text-white block font-bold truncate">{stats.name}</span>
-                  <span className="text-[var(--text-color)]/90 block truncate">{stats.pipeline}</span>
-                </div>
+            <div className="space-y-4 mt-6">
+              {activeModelId && (
+                <button
+                  onClick={handleDeactivateActiveModel}
+                  disabled={loading}
+                  className="w-full border border-red-500/40 bg-red-950/15 hover:bg-red-900 hover:text-white text-red-500 uppercase font-bold text-xs py-3 tracking-wider transition rounded"
+                >
+                  Deactivate Model
+                </button>
               )}
-
               <div className="text-[9px] text-zinc-600 border-t border-[var(--border-color)] pt-3">
                 CyberOS v1.0.8 <br />
                 © ALL REGISTERED ACCOUNTS
@@ -383,7 +442,7 @@ function App() {
 
             {activeModelId && (
               <button
-                onClick={handleDeRegisterActiveModel}
+                onClick={handleDeactivateActiveModel}
                 disabled={loading}
                 className="w-full border border-red-500/40 bg-red-950/15 hover:bg-red-900 hover:text-white text-red-500 uppercase font-bold text-xs py-3 tracking-wider transition rounded"
               >
@@ -430,12 +489,9 @@ function App() {
             {theme === "theme-cyberos" && (
               <footer className="cyberos-double-border bg-black p-2.5 rounded text-[10px] text-zinc-500 flex justify-between items-center px-4 select-none uppercase font-mono">
                 <div className="flex space-x-4">
-                  <span>[Enter] Select</span>
-                  <span>[↑/↓] Navigate</span>
-                  <span>[Esc] Close</span>
-                  <span>[TAB] Select</span>
+
                 </div>
-                <span className="text-[var(--accent-color)] font-bold">@unremarkable_garden</span>
+                <span className="text-[var(--accent-color)] font-bold">@__4093__</span>
               </footer>
             )}
           </main>

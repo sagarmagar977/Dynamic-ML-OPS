@@ -408,12 +408,12 @@ with open("metadata.json", "w") as f:
           </div>
         </div>
 
-        <div className="overflow-x-auto overflow-y-visible">
+        <div className="overflow-visible">
           <table className="w-full text-xs font-mono border-collapse text-zinc-400">
             <thead>
               <tr className="border-b border-zinc-900 text-zinc-500 text-left">
-                <th className="py-2 px-2 uppercase text-[10px]">Model Registry Details</th>
-                <th className="py-2 px-2 uppercase text-[10px]">Baseline metrics</th>
+                <th className="py-2 px-2 uppercase text-[10px]">Model</th>
+                <th className="py-2 px-2 uppercase text-[10px]">Task</th>
                 <th className="py-2 px-2 uppercase text-[10px] text-center">Colab Link</th>
                 <th className="py-2 px-2 uppercase text-[10px]">Active Status</th>
                 <th className="py-2 px-2 uppercase text-[10px] text-right">Actions</th>
@@ -438,104 +438,99 @@ with open("metadata.json", "w") as f:
                     const isLast = index === sortedModels.length - 1;
                     return (
                       <tr key={model.id} className="border-b border-zinc-900/60 hover:bg-zinc-900/10">
-                      <td className="py-3 px-2">
-                        <div className="text-white text-sm font-black tracking-wide">{model.name}</div>
-                        <div className="text-[10px] text-zinc-500 mt-0.5 font-mono">
-                          {model.id} • <span className="text-[var(--accent-color)] font-bold uppercase">{model.algorithm_variant}</span> ({model.task_type})
-                        </div>
-                      </td>
-                      <td className="py-3 px-2">
-                        {Object.entries(model.metrics || {}).map(([m, val]) => (
-                          <div key={m} className="text-[10px] whitespace-nowrap">
-                            {m.toUpperCase()}: {model.task_type === "classification" ? `${(val * 100).toFixed(1)}%` : val.toFixed(4)}
+                        <td className="py-3 px-2">
+                          <div className="text-white text-sm font-black tracking-wide">{model.name}</div>
+                          <div className="text-[10px] text-zinc-500 mt-0.5 font-mono">
+                            {model.id} • <span className="text-[var(--accent-color)] font-bold uppercase">{model.algorithm_variant}</span>
                           </div>
-                        ))}
-                      </td>
-                      <td className="py-3 px-2 text-center">
-                        {model.colab_link ? (
-                          <a
-                            href={model.colab_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-block hover:scale-115 transition-transform text-[var(--accent-color)] text-sm font-bold"
-                            title={model.colab_link}
-                          >
-                            🔗
-                          </a>
-                        ) : (
-                          <span className="text-zinc-700 font-mono">-</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-2">
-                        {model.active ? (
-                          <span className="inline-block px-2 py-0.5 border border-green-500/30 text-green-400 bg-green-950/20 text-[9px] uppercase font-bold rounded animate-pulse">
-                            ACTIVE
-                          </span>
-                        ) : (
-                          <span className="inline-block px-2 py-0.5 border border-zinc-800 text-zinc-600 bg-zinc-950 text-[9px] uppercase font-bold rounded">
-                            COLD
-                          </span>
-                        )}
-                      </td>
-                      <td 
-                        className="py-3 px-2 text-right relative action-menu-td"
-                        onMouseLeave={() => setActiveMenuId(null)}
-                      >
-                        <div className="flex items-center justify-end space-x-2">
-                          {/* Class Image Trigger */}
-                          {model.classes && model.classes.length > 0 && (
-                            <button
-                              onClick={() => {
-                                setSelectedClassModelId(model.id);
-                                setSelectedClassName(model.classes[0]);
-                              }}
-                              className="border border-zinc-800 hover:border-[var(--accent-color)]/50 text-[9px] text-zinc-500 hover:text-[var(--accent-color)] px-2 py-0.5 rounded font-mono uppercase"
+                        </td>
+                        <td className="py-3 px-2 uppercase font-mono text-zinc-300">
+                          {model.task_type}
+                        </td>
+                        <td className="py-3 px-2 text-center">
+                          {model.colab_link ? (
+                            <a
+                              href={model.colab_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-block hover:scale-115 transition-transform text-[var(--accent-color)] text-sm font-bold"
+                              title={model.colab_link}
                             >
-                              Visual Token
-                            </button>
+                              🔗
+                            </a>
+                          ) : (
+                            <span className="text-zinc-700 font-mono">-</span>
                           )}
+                        </td>
+                        <td className="py-3 px-2">
+                          {model.active ? (
+                            <span className="inline-block px-2 py-0.5 border border-green-500/30 text-green-400 bg-green-950/20 text-[9px] uppercase font-bold rounded animate-pulse">
+                              ACTIVE
+                            </span>
+                          ) : (
+                            <span className="inline-block px-2 py-0.5 border border-zinc-800 text-zinc-600 bg-zinc-950 text-[9px] uppercase font-bold rounded">
+                              COLD
+                            </span>
+                          )}
+                        </td>
+                        <td
+                          className="py-3 px-2 text-right relative action-menu-td"
+                          onMouseLeave={() => setActiveMenuId(null)}
+                        >
+                          <div className="flex items-center justify-end space-x-2">
+                            {/* Class Image Trigger */}
+                            {model.classes && model.classes.length > 0 && (
+                              <button
+                                onClick={() => {
+                                  setSelectedClassModelId(model.id);
+                                  setSelectedClassName(model.classes[0]);
+                                }}
+                                className="border border-zinc-800 hover:border-[var(--accent-color)]/50 text-[9px] text-zinc-500 hover:text-[var(--accent-color)] px-2 py-0.5 rounded font-mono uppercase"
+                              >
+                                Visual Token
+                              </button>
+                            )}
 
-                          <button
-                            onClick={() => setActiveMenuId(activeMenuId === model.id ? null : model.id)}
-                            className="text-zinc-500 hover:text-white p-1 font-mono text-sm"
-                          >
-                            ⋮
-                          </button>
-                        </div>
-
-                        {/* 3-Dot Action Menu Context Dropdown */}
-                        {activeMenuId === model.id && (
-                          <div 
-                            onMouseLeave={() => setActiveMenuId(null)}
-                            className={`absolute right-2 w-32 bg-zinc-950 border border-zinc-800 rounded shadow-xl z-20 text-left py-1 font-mono text-[10px] uppercase ${
-                              isLast ? "bottom-full mb-1" : "mt-1"
-                            }`}
-                          >
                             <button
-                              onClick={() => handleActivate(model.id)}
-                              className="w-full text-left px-3 py-1.5 hover:bg-zinc-900 text-green-500 font-bold block"
+                              onClick={() => setActiveMenuId(activeMenuId === model.id ? null : model.id)}
+                              className="text-zinc-500 hover:text-white p-1 font-mono text-sm"
                             >
-                              ACTIVATE
-                            </button>
-                            <button
-                              onClick={() => setEditingModel(model)}
-                              className="w-full text-left px-3 py-1.5 hover:bg-zinc-900 text-[var(--accent-color)] block"
-                            >
-                              EDIT
-                            </button>
-                            <button
-                              onClick={() => handleDelete(model.id)}
-                              disabled={model.active}
-                              className="w-full text-left px-3 py-1.5 hover:bg-zinc-900 text-red-500 disabled:opacity-30 block"
-                            >
-                              DELETE
+                              ⋮
                             </button>
                           </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                });
+
+                          {/* 3-Dot Action Menu Context Dropdown */}
+                          {activeMenuId === model.id && (
+                            <div
+                              onMouseLeave={() => setActiveMenuId(null)}
+                              className={`absolute right-2 w-32 bg-zinc-950 border border-zinc-800 rounded shadow-xl z-20 text-left py-1 font-mono text-[10px] uppercase ${isLast ? "bottom-full mb-1" : "mt-1"
+                                }`}
+                            >
+                              <button
+                                onClick={() => handleActivate(model.id)}
+                                className="w-full text-left px-3 py-1.5 hover:bg-zinc-900 text-green-500 font-bold block"
+                              >
+                                ACTIVATE
+                              </button>
+                              <button
+                                onClick={() => setEditingModel(model)}
+                                className="w-full text-left px-3 py-1.5 hover:bg-zinc-900 text-[var(--accent-color)] block"
+                              >
+                                EDIT
+                              </button>
+                              <button
+                                onClick={() => handleDelete(model.id)}
+                                disabled={model.active}
+                                className="w-full text-left px-3 py-1.5 hover:bg-zinc-900 text-red-500 disabled:opacity-30 block"
+                              >
+                                DELETE
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  });
                 })()
               )}
             </tbody>
