@@ -9,9 +9,9 @@ import os
 # CORS middleware - read allowed origins from environment
 frontend_url = os.environ.get("FRONTEND_URL")
 if frontend_url:
-    origins = [o.strip() for o in frontend_url.split(",")]
+    origins = [o.strip().rstrip("/") for o in frontend_url.split(",")]
     # Include localhost for local frontend dev convenience
-    origins.extend(["http://localhost:5173", "http://localhost:3000"])
+    origins.extend(["http://localhost:5173", "http://localhost:3000", "http://localhost:5173/", "http://localhost:3000/"])
 else:
     origins = ["*"]
 
