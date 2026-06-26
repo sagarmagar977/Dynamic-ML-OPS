@@ -27,3 +27,28 @@ app.include_router(supabase.router, prefix="/supabase", tags=["supabase"])
 @app.get("/")
 def read_root():
     return {"message": "OmniPredictor Terminal API is running"}
+
+
+
+@app.on_event("startup")
+async def preload_models():
+    """Pre-download all models from Supabase on server boot."""
+    from backend.utils.model_loader import ModelManager
+    from backend.supabase_client import supabase, SUPABASE_URL, key
+    import json, os
+
+    is_dummy = (not SUPABASE_URL or "YOUR_SUPABASE_URL" in SUPABASE_URL)
+    if is_dummy:
+        return
+
+    try:
+        resp = supabase.from_("models").select("id").execute()
+        manager = ModelManager()
+        for row in resp.data:
+            try:
+                manager.load_model(row["id"])
+                print(f"✅ Pre-loaded: {row['id']}")
+            except Exception as e:
+                print(f"⚠️ Could not pre-load {row['id']}: {e}")
+    except Exception as e:
+        print(f"⚠️ Startup pre-load skipped: {e}")
