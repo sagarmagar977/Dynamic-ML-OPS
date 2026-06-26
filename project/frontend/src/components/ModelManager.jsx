@@ -434,8 +434,10 @@ with open("metadata.json", "w") as f:
                     if (sortBy === "modified") return (b.modified_at || 0) - (a.modified_at || 0);
                     return 0;
                   });
-                  return sortedModels.map((model) => (
-                    <tr key={model.id} className="border-b border-zinc-900/60 hover:bg-zinc-900/10">
+                  return sortedModels.map((model, index) => {
+                    const isLast = index === sortedModels.length - 1;
+                    return (
+                      <tr key={model.id} className="border-b border-zinc-900/60 hover:bg-zinc-900/10">
                       <td className="py-3 px-2">
                         <div className="text-white text-sm font-black tracking-wide">{model.name}</div>
                         <div className="text-[10px] text-zinc-500 mt-0.5 font-mono">
@@ -505,7 +507,9 @@ with open("metadata.json", "w") as f:
                         {activeMenuId === model.id && (
                           <div 
                             onMouseLeave={() => setActiveMenuId(null)}
-                            className="absolute right-2 mt-1 w-32 bg-zinc-950 border border-zinc-800 rounded shadow-xl z-20 text-left py-1 font-mono text-[10px] uppercase"
+                            className={`absolute right-2 w-32 bg-zinc-950 border border-zinc-800 rounded shadow-xl z-20 text-left py-1 font-mono text-[10px] uppercase ${
+                              isLast ? "bottom-full mb-1" : "mt-1"
+                            }`}
                           >
                             <button
                               onClick={() => handleActivate(model.id)}
@@ -530,7 +534,8 @@ with open("metadata.json", "w") as f:
                         )}
                       </td>
                     </tr>
-                  ));
+                  );
+                });
                 })()
               )}
             </tbody>
