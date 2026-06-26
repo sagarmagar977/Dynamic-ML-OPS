@@ -1,7 +1,7 @@
 // frontend/src/services/api.js
 import axios from "axios";
 
-const API_BASE = "/api"; // Mapped through Vite proxy to http://localhost:8000
+const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 export const fetchModels = async () => {
   const { data } = await axios.get(`${API_BASE}/models`);
