@@ -413,8 +413,8 @@ with open("metadata.json", "w") as f:
             <thead>
               <tr className="border-b border-zinc-900 text-zinc-500 text-left">
                 <th className="py-2 px-2 uppercase text-[10px]">Model</th>
-                <th className="py-2 px-2 uppercase text-[10px]">Task</th>
-                <th className="py-2 px-2 uppercase text-[10px] text-center">Colab Link</th>
+                <th className="py-2 px-2 uppercase text-[10px] hidden sm:table-cell">Task</th>
+                <th className="py-2 px-2 uppercase text-[10px] text-center hidden sm:table-cell">Colab Link</th>
                 <th className="py-2 px-2 uppercase text-[10px]">Active Status</th>
                 <th className="py-2 px-2 uppercase text-[10px] text-right">Actions</th>
               </tr>
@@ -444,10 +444,10 @@ with open("metadata.json", "w") as f:
                             {model.id} • <span className="text-[var(--accent-color)] font-bold uppercase">{model.algorithm_variant}</span>
                           </div>
                         </td>
-                        <td className="py-3 px-2 uppercase font-mono text-zinc-300">
+                        <td className="py-3 px-2 uppercase font-mono text-zinc-300 hidden sm:table-cell">
                           {model.task_type}
                         </td>
-                        <td className="py-3 px-2 text-center">
+                        <td className="py-3 px-2 text-center hidden sm:table-cell">
                           {model.colab_link ? (
                             <a
                               href={model.colab_link}
@@ -485,7 +485,7 @@ with open("metadata.json", "w") as f:
                                   setSelectedClassModelId(model.id);
                                   setSelectedClassName(model.classes[0]);
                                 }}
-                                className="border border-zinc-800 hover:border-[var(--accent-color)]/50 text-[9px] text-zinc-500 hover:text-[var(--accent-color)] px-2 py-0.5 rounded font-mono uppercase"
+                                className="border border-zinc-800 hover:border-[var(--accent-color)]/50 text-[9px] text-zinc-500 hover:text-[var(--accent-color)] px-2 py-0.5 rounded font-mono uppercase hidden sm:inline-block"
                               >
                                 Visual Token
                               </button>

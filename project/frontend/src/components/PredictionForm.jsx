@@ -11,7 +11,8 @@ const PredictionForm = ({ schema, onPredict, chatOpen }) => {
     const isString = typeof field === "string";
     const name = isString ? field : field.name;
     const label = isString ? field : (field.label || field.name);
-    const type = isString ? "continuous" : (field.type || "continuous");
+    const rawType = isString ? "continuous" : (field.type || "continuous");
+    const type = rawType === "numerical" ? "continuous" : rawType;
     const min = isString ? 0 : (field.min !== undefined ? field.min : 0);
     const max = isString ? 10 : (field.max !== undefined ? field.max : 10);
     const step = isString ? 0.1 : (field.step !== undefined ? field.step : 0.1);

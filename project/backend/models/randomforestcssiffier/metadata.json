@@ -1,0 +1,162 @@
+{
+  "model_name": "Adult Income Predictor",
+  "model_type": "RandomForestClassifier (ColumnTransformer + Pipeline)",
+  "target": "income",
+  "classes": [
+    "<=50K",
+    ">50K"
+  ],
+  "features": [
+    {
+      "name": "age",
+      "type": "numerical",
+      "description": "Age of the individual in years",
+      "min": 17.0,
+      "max": 90.0,
+      "default": 38.5301,
+      "step": 1.0
+    },
+    {
+      "name": "workclass",
+      "type": "categorical",
+      "options": [
+        "Federal-gov",
+        "Local-gov",
+        "Never-worked",
+        "Private",
+        "Self-emp-inc",
+        "Self-emp-not-inc",
+        "State-gov",
+        "Without-pay"
+      ],
+      "default": "Private",
+      "description": "Employment sector (e.g. Private, Self-emp, Government)"
+    },
+    {
+      "name": "education.num",
+      "type": "numerical",
+      "description": "Numeric encoding of education level (1=Preschool, 16=Doctorate)",
+      "min": 1.0,
+      "max": 16.0,
+      "default": 10.0805,
+      "step": 1.0
+    },
+    {
+      "name": "marital.status",
+      "type": "categorical",
+      "options": [
+        "Divorced",
+        "Married-AF-spouse",
+        "Married-civ-spouse",
+        "Married-spouse-absent",
+        "Never-married",
+        "Separated",
+        "Widowed"
+      ],
+      "default": "Married-civ-spouse",
+      "description": "Marital status of the individual"
+    },
+    {
+      "name": "occupation",
+      "type": "categorical",
+      "options": [
+        "Adm-clerical",
+        "Armed-Forces",
+        "Craft-repair",
+        "Exec-managerial",
+        "Farming-fishing",
+        "Handlers-cleaners",
+        "Machine-op-inspct",
+        "Other-service",
+        "Priv-house-serv",
+        "Prof-specialty",
+        "Protective-serv",
+        "Sales",
+        "Tech-support",
+        "Transport-moving"
+      ],
+      "default": "Prof-specialty",
+      "description": "Occupation category"
+    },
+    {
+      "name": "relationship",
+      "type": "categorical",
+      "options": [
+        "Husband",
+        "Not-in-family",
+        "Other-relative",
+        "Own-child",
+        "Unmarried",
+        "Wife"
+      ],
+      "default": "Husband",
+      "description": "Relationship status within a household"
+    },
+    {
+      "name": "race",
+      "type": "categorical",
+      "options": [
+        "Amer-Indian-Eskimo",
+        "Asian-Pac-Islander",
+        "Black",
+        "Other",
+        "White"
+      ],
+      "default": "White",
+      "description": "Race of the individual"
+    },
+    {
+      "name": "sex",
+      "type": "categorical",
+      "options": [
+        "Female",
+        "Male"
+      ],
+      "default": "Male",
+      "description": "Biological sex of the individual"
+    },
+    {
+      "name": "capital.gain",
+      "type": "numerical",
+      "description": "Capital gains recorded for the individual (USD)",
+      "min": 0.0,
+      "max": 99999.0,
+      "default": 1086.9007,
+      "step": 1.0
+    },
+    {
+      "name": "capital.loss",
+      "type": "numerical",
+      "description": "Capital losses recorded for the individual (USD)",
+      "min": 0.0,
+      "max": 4356.0,
+      "default": 88.5751,
+      "step": 1.0
+    },
+    {
+      "name": "hours.per.week",
+      "type": "numerical",
+      "description": "Self-reported hours worked per week",
+      "min": 1.0,
+      "max": 99.0,
+      "default": 40.4205,
+      "step": 1.0
+    }
+  ],
+  "metrics": {
+    "training_accuracy": 0.9481,
+    "test_accuracy": 0.8485
+  },
+  "charts": [
+    "train_chart.png",
+    "test_chart.png"
+  ],
+  "dropped_columns": [
+    "fnlwgt",
+    "education",
+    "native.country"
+  ],
+  "colab_link": null,
+  "task_type": "classification",
+  "n_features_in_": 11
+}

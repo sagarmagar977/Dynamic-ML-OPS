@@ -19,6 +19,7 @@ function App() {
   const [error, setError] = useState(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatSize, setChatSize] = useState("medium");
+  const [statsOpen, setStatsOpen] = useState(false);
 
   useEffect(() => {
     document.body.className = theme;
@@ -244,6 +245,19 @@ function App() {
             🤖
           </button>
           <div className="w-px h-4 bg-[var(--border-color)]/60" />
+          <button
+            onClick={() => setStatsOpen(!statsOpen)}
+            className={`text-[9px] border px-2 py-0.5 rounded font-bold uppercase transition md:hidden ${
+              statsOpen
+                ? "border-[var(--accent-color)] text-[var(--accent-color)] bg-[var(--panel-bg)]"
+                : "border-[var(--border-color)] text-zinc-500 hover:text-[var(--text-color)]"
+            }`}
+            title="Toggle Stats Panel"
+          >
+            📊 Stats
+          </button>
+          <div className="w-px h-4 bg-[var(--border-color)]/60 md:hidden" />
+          <div className="w-px h-4 bg-[var(--border-color)]/60 hidden md:block" />
           <div className="flex items-center space-x-2 text-[10px] text-zinc-500 font-mono">
             <span className="font-bold uppercase tracking-wider">THEME:</span>
             <select
@@ -266,8 +280,8 @@ function App() {
       {/* Main Content Body Layout */}
       <div className="flex-1 flex flex-col md:flex-row min-h-0 min-w-0 overflow-y-auto md:overflow-hidden">
         {/* If CyberOS, show navigation sidebar. Otherwise show standard stats panel sidebar */}
-        {theme === "theme-cyberos" ? (
-          <aside className="w-full md:w-64 border-b md:border-b-0 md:border-r border-double border-[var(--border-color)] bg-[var(--panel-bg)]/60 p-4 md:p-5 flex flex-col justify-between shrink-0 select-none text-left overflow-y-auto md:max-h-none max-h-[300px]">
+        {theme === "theme-cyberos" && (
+          <aside className="hidden md:flex w-full md:w-64 border-b md:border-b-0 md:border-r border-double border-[var(--border-color)] bg-[var(--panel-bg)]/60 p-4 md:p-5 flex-col justify-between shrink-0 select-none text-left overflow-y-auto md:max-h-none max-h-[300px]">
             <div className="space-y-6">
               <div className="pb-2 border-b border-[var(--border-color)]">
                 <div className="text-[var(--text-color)] text-sm font-black tracking-widest uppercase">
@@ -361,7 +375,7 @@ function App() {
             <div className="space-y-4 mt-6">
               {activeModelId && (
                 <button
-                  onClick={handleDeactivateActiveModel}
+                  onClick={handleDeActivateActiveModel || handleDeactivateActiveModel}
                   disabled={loading}
                   className="w-full border border-red-500/40 bg-red-950/15 hover:bg-red-900 hover:text-white text-red-500 uppercase font-bold text-xs py-3 tracking-wider transition rounded"
                 >
@@ -374,112 +388,116 @@ function App() {
               </div>
             </div>
           </aside>
-        ) : (
-          /* Left Sidebar statistics panel (Standard layout only) */
-          <aside className="w-full md:w-64 border-b md:border-b-0 md:border-r border-[var(--border-color)] bg-[var(--panel-bg)]/60 p-4 md:p-5 flex flex-col justify-between shrink-0 select-none text-left overflow-y-auto md:max-h-none max-h-[300px]">
-            <div className="space-y-6">
-              <div className="border-b border-[var(--border-color)] pb-2">
-                <h3 className="text-xs text-zinc-500 uppercase tracking-widest font-bold">
-                  System Stats Panel
-                </h3>
-              </div>
+        )}
 
-              {stats ? (
-                <div className="space-y-4 text-xs">
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase block font-semibold">
-                      IDENT
-                    </span>
-                    <span className="text-[var(--text-color)] font-bold tracking-wide break-all block">
-                      {stats.name}
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase block font-semibold">
-                      PIPELINE
-                    </span>
-                    <span className="text-[var(--text-color)]/95 break-words block text-[11px]">
-                      {stats.pipeline}
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="text-[10px] text-zinc-500 uppercase block font-semibold">
-                      TARGET
-                    </span>
-                    <span className="text-[var(--accent-color)] font-bold block uppercase">
-                      {stats.target}
-                    </span>
-                  </div>
-
-                  <div className="space-y-2">
-                    <span className="text-[10px] text-zinc-500 uppercase block font-semibold">
-                      Metrics Report
-                    </span>
-                    <div className="flex border border-[var(--border-color)] bg-[var(--panel-bg)]/40 divide-x divide-[var(--border-color)] rounded overflow-hidden shadow-sm">
-                      {Object.entries(stats.metrics).slice(0, 2).map(([key, val]) => (
-                        <div key={key} className="flex-1 p-2.5 text-center">
-                          <span className="text-[8px] text-zinc-500 block uppercase font-bold truncate">
-                            {key.replace("_", " ")}
-                          </span>
-                          <span className="text-xs font-black text-[var(--accent-color)] block mt-0.5">
-                            {stats.task_type === "classification"
-                              ? `${(val * 100).toFixed(0)}%`
-                              : val.toFixed(2)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-zinc-600 text-[11px] py-4 text-center">
-                  NO ACTIVE PIPELINE LOADED INTO INFERENCE REGISTERS
-                </div>
-              )}
+        {/* Collapsible Stats Panel sidebar for standard themes OR on mobile under CyberOS */}
+        <aside className={`${
+          theme === "theme-cyberos" ? "md:hidden" : ""
+        } ${
+          statsOpen ? "flex" : "hidden md:flex"
+        } w-full md:w-64 border-b md:border-b-0 md:border-r border-[var(--border-color)] bg-[var(--panel-bg)]/60 p-4 md:p-5 flex-col justify-between shrink-0 select-none text-left overflow-y-auto md:max-h-none max-h-[300px]`}>
+          <div className="space-y-6">
+            <div className="border-b border-[var(--border-color)] pb-2">
+              <h3 className="text-xs text-zinc-500 uppercase tracking-widest font-bold">
+                System Stats Panel
+              </h3>
             </div>
 
-            {activeModelId && (
-              <button
-                onClick={handleDeactivateActiveModel}
-                disabled={loading}
-                className="w-full border border-red-500/40 bg-red-950/15 hover:bg-red-900 hover:text-white text-red-500 uppercase font-bold text-xs py-3 tracking-wider transition rounded"
-              >
-                Deactivate Model
-              </button>
+            {stats ? (
+              <div className="space-y-4 text-xs">
+                <div>
+                  <span className="text-[10px] text-zinc-500 uppercase block font-semibold">
+                    IDENT
+                  </span>
+                  <span className="text-[var(--text-color)] font-bold tracking-wide break-all block">
+                    {stats.name}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-zinc-500 uppercase block font-semibold">
+                    PIPELINE
+                  </span>
+                  <span className="text-[var(--text-color)]/95 break-words block text-[11px]">
+                    {stats.pipeline}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-zinc-500 uppercase block font-semibold">
+                    TARGET
+                  </span>
+                  <span className="text-[var(--accent-color)] font-bold block uppercase">
+                    {stats.target}
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="text-[10px] text-zinc-500 uppercase block font-semibold">
+                    Metrics Report
+                  </span>
+                  <div className="flex border border-[var(--border-color)] bg-[var(--panel-bg)]/40 divide-x divide-[var(--border-color)] rounded overflow-hidden shadow-sm">
+                    {Object.entries(stats.metrics).slice(0, 2).map(([key, val]) => (
+                      <div key={key} className="flex-1 p-2.5 text-center">
+                        <span className="text-[8px] text-zinc-500 block uppercase font-bold truncate">
+                          {key.replace("_", " ")}
+                        </span>
+                        <span className="text-xs font-black text-[var(--accent-color)] block mt-0.5">
+                          {stats.task_type === "classification"
+                            ? `${(val * 100).toFixed(0)}%`
+                            : val.toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-zinc-600 text-[11px] py-4 text-center">
+                NO ACTIVE PIPELINE LOADED INTO INFERENCE REGISTERS
+              </div>
             )}
-          </aside>
-        )}
+          </div>
+
+          {activeModelId && (
+            <button
+              onClick={handleDeactivateActiveModel}
+              disabled={loading}
+              className="w-full mt-6 border border-red-500/40 bg-red-950/15 hover:bg-red-900 hover:text-white text-red-500 uppercase font-bold text-xs py-3 tracking-wider transition rounded"
+            >
+              Deactivate Model
+            </button>
+          )}
+        </aside>
 
         {/* Content area and sliding chat sidebar */}
         <div className="flex-1 flex flex-row min-h-0 min-w-0 overflow-hidden relative">
           <main className="flex-1 bg-[var(--bg-color)] p-6 flex flex-col space-y-6 min-w-0 min-h-0">
             {/* Tab Navigation Menu */}
-            {theme !== "theme-cyberos" && (
-              <div className="flex border-b border-[var(--border-color)] pb-px space-x-1 uppercase text-[10px] sm:text-xs select-none shrink-0 w-full overflow-hidden">
-                {["inference", "performance charts", "batch", "deploy"].map((tab) => {
-                  const isActive = activeTab === tab;
-                  return (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveTab(tab)}
-                      className={`flex-1 sm:flex-initial text-center px-1.5 sm:px-4 py-2 font-bold whitespace-nowrap rounded-t tape-tab-btn ${
-                        isActive
-                          ? "active text-[var(--accent-color)]"
-                          : "text-zinc-500 hover:text-[var(--text-color)] bg-[var(--panel-bg)]/20"
-                      }`}
-                    >
-                      {tab === "performance charts" ? (
-                        <span>
-                          <span className="hidden sm:inline">performance </span>charts
-                        </span>
-                      ) : tab}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            <div className={`border-b border-[var(--border-color)] pb-px space-x-1 uppercase text-[10px] sm:text-xs select-none shrink-0 w-full overflow-hidden ${
+              theme === "theme-cyberos" ? "flex md:hidden" : "flex"
+            }`}>
+              {["inference", "performance charts", "batch", "deploy"].map((tab) => {
+                const isActive = activeTab === tab;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`flex-1 sm:flex-initial text-center px-1.5 sm:px-4 py-2 font-bold whitespace-nowrap rounded-t tape-tab-btn ${
+                      isActive
+                        ? "active text-[var(--accent-color)]"
+                        : "text-zinc-500 hover:text-[var(--text-color)] bg-[var(--panel-bg)]/20"
+                    }`}
+                  >
+                    {tab === "performance charts" ? (
+                      <span>
+                        <span className="hidden sm:inline">performance </span>charts
+                      </span>
+                    ) : tab}
+                  </button>
+                );
+              })}
+            </div>
 
             {/* Tab Views content area */}
             <div className={`flex-1 bg-[var(--panel-bg)]/20 border border-[var(--border-color)] p-6 rounded min-w-0 flex flex-col min-h-0 overflow-y-auto ${theme === "theme-cyberos" ? "cyberos-double-border bg-black" : ""}`}>
