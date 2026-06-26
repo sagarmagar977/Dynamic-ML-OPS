@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.api import models, model_info, predict, predict_batch, agent
 
-app = FastAPI(title="OmniPredictor Terminal")
+app = FastAPI(title="OmniPredictor")
 
 # CORS middleware - adjust origins as needed for production
 app.add_middleware(

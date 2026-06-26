@@ -113,15 +113,10 @@ export const inspectModel = async (modelFile) => {
   return data;
 };
 
-export const sendAgentMessage = async (message, history, modelId, apiKey) => {
+export const sendAgentMessage = async (message, history, modelId) => {
   const { data } = await axios.post(
     `${API_BASE}/agent/chat`,
-    { message, history, model_id: modelId },
-    {
-      headers: {
-        "X-Gemini-Key": apiKey,
-      },
-    }
+    { message, history, model_id: modelId }
   );
   return data;
 };

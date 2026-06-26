@@ -229,7 +229,7 @@ function App() {
         <div className="flex items-center space-x-3">
           <span className="text-[var(--accent-color)] text-lg">⌬</span>
           <h1 className="text-lg font-black uppercase tracking-widest text-[var(--accent-color)]">
-            {theme === "theme-cyberos" ? "Cψβεяspαcε" : "OmniPredictor Terminal"}
+            {theme === "theme-cyberos" ? "OmniPredictor" : "OmniPredictor "}
           </h1>
         </div>
         <div className="flex items-center border border-[var(--border-color)] bg-[var(--panel-bg)]/50 rounded-md p-1 px-3.5 space-x-3.5 shadow-sm">
@@ -387,7 +387,7 @@ function App() {
                 disabled={loading}
                 className="w-full border border-red-500/40 bg-red-950/15 hover:bg-red-900 hover:text-white text-red-500 uppercase font-bold text-xs py-3 tracking-wider transition rounded"
               >
-                De-Register Active Model
+                Deactivate Model
               </button>
             )}
           </aside>
