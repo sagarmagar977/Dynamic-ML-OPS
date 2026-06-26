@@ -30,19 +30,40 @@ def predict(input_data: PredictionInput):
                 detail=f"Feature count mismatch: Expected {expected_features} features, got {len(input_data.features)}"
             )
             
-        # Cast inputs to float
-        try:
-            numeric_features = [float(x) for x in input_data.features]
-        except ValueError as e:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Feature casting error: All inputs must be numeric. Details: {str(e)}"
-            )
-            
-        input_array = np.array(numeric_features).reshape(1, -1)
+        # Cast inputs based on metadata types if available
+        features_config = metadata.get("features", [])
+        processed_features = []
+        for i, val in enumerate(input_data.features):
+            if i < len(features_config):
+                feat_type = features_config[i].get("type", "continuous")
+                if feat_type in ("numerical", "continuous"):
+                    try:
+                        processed_features.append(float(val))
+                    except (ValueError, TypeError) as e:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Feature casting error: value '{val}' for feature '{features_config[i].get('name')}' must be numeric."
+                        )
+                else:
+                    processed_features.append(str(val))
+            else:
+                # Fallback: try casting to float, otherwise string
+                try:
+                    processed_features.append(float(val))
+                except (ValueError, TypeError):
+                    processed_features.append(str(val))
+                    
+        import pandas as pd
+        features_config = metadata.get("features", [])
+        feature_names = [f.get("name") for f in features_config]
         
+        if len(feature_names) == len(processed_features):
+            input_df = pd.DataFrame([processed_features], columns=feature_names)
+        else:
+            input_df = pd.DataFrame([processed_features])
+            
         # Predict
-        prediction = model.predict(input_array)
+        prediction = model.predict(input_df)
         pred_list = prediction.tolist()
         task_type = metadata.get("task_type", "unknown")
         
@@ -56,7 +77,7 @@ def predict(input_data: PredictionInput):
         
         # Add probability distribution if classification
         if task_type == "classification" and hasattr(model, "predict_proba"):
-            probabilities = model.predict_proba(input_array)[0].tolist()
+            probabilities = model.predict_proba(input_df)[0].tolist()
             classes = [str(c) for c in model.classes_]
             
             prob_matrix = {cls: prob for cls, prob in zip(classes, probabilities)}

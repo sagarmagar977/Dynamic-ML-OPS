@@ -8,17 +8,19 @@ const SliderInput = ({ name, label, min, max, step, value, onChange }) => {
       onChange(name, "");
       return;
     }
-    const num = parseFloat(val);
+    const num = Math.round(parseFloat(val));
     if (!isNaN(num)) {
       onChange(name, num);
     }
   };
 
   const handleSliderChange = (e) => {
-    onChange(name, parseFloat(e.target.value));
+    onChange(name, Math.round(parseFloat(e.target.value)));
   };
 
-  const currentValue = value !== undefined && value !== "" ? value : (min + max) / 2;
+  const roundedMin = Math.round(min);
+  const roundedMax = Math.round(max);
+  const currentValue = value !== undefined && value !== "" ? Math.round(value) : Math.round((min + max) / 2);
 
   return (
     <div className="flex flex-col space-y-1 py-2 border-b border-[var(--border-color)]">
@@ -27,26 +29,26 @@ const SliderInput = ({ name, label, min, max, step, value, onChange }) => {
           {label || name}
         </label>
         <span className="text-zinc-500 text-[10px]">
-          [Min: {min} / Max: {max}]
+          [Min: {roundedMin} / Max: {roundedMax}]
         </span>
       </div>
       
       <div className="flex items-center space-x-4">
         <input
           type="range"
-          min={min}
-          max={max}
-          step={step}
+          min={roundedMin}
+          max={roundedMax}
+          step={1}
           value={currentValue}
           onChange={handleSliderChange}
           className="flex-1 accent-[var(--accent-color)] cursor-pointer"
         />
         <input
           type="number"
-          min={min}
-          max={max}
-          step={step}
-          value={value !== undefined ? value : ""}
+          min={roundedMin}
+          max={roundedMax}
+          step={1}
+          value={value !== undefined ? Math.round(value) : ""}
           onChange={handleInputChange}
           className="w-20 bg-[var(--panel-bg)] text-[var(--text-color)] border border-[var(--border-color)] text-xs px-2 py-1 text-center font-mono rounded focus:border-[var(--accent-color)] focus:outline-none"
         />

@@ -13,15 +13,15 @@ const PredictionForm = ({ schema, onPredict, chatOpen }) => {
     const label = isString ? field : (field.label || field.name);
     const rawType = isString ? "continuous" : (field.type || "continuous");
     const type = rawType === "numerical" ? "continuous" : rawType;
-    const min = isString ? 0 : (field.min !== undefined ? field.min : 0);
-    const max = isString ? 10 : (field.max !== undefined ? field.max : 10);
-    const step = isString ? 0.1 : (field.step !== undefined ? field.step : 0.1);
+    const min = isString ? 0 : (field.min !== undefined ? Math.round(field.min) : 0);
+    const max = isString ? 10 : (field.max !== undefined ? Math.round(field.max) : 10);
+    const step = 1;
 
     let defaultValue = "";
     if (type === "continuous") {
       defaultValue = isString
         ? 5
-        : (field.default !== undefined ? field.default : (min + max) / 2);
+        : (field.default !== undefined ? Math.round(field.default) : Math.round((min + max) / 2));
     } else {
       defaultValue = isString ? "" : (field.default !== undefined ? field.default : "");
     }

@@ -375,7 +375,7 @@ function App() {
             <div className="space-y-4 mt-6">
               {activeModelId && (
                 <button
-                  onClick={handleDeActivateActiveModel || handleDeactivateActiveModel}
+                  onClick={handleDeactivateActiveModel}
                   disabled={loading}
                   className="w-full border border-red-500/40 bg-red-950/15 hover:bg-red-900 hover:text-white text-red-500 uppercase font-bold text-xs py-3 tracking-wider transition rounded"
                 >

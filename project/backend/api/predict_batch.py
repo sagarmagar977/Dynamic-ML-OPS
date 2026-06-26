@@ -25,6 +25,7 @@ def predict_batch(input_data: BatchPredictionInput):
         metadata = model_data["metadata"]
         
         expected_features = metadata.get("n_features_in_", len(metadata.get("features", [])))
+        features_config = metadata.get("features", [])
         
         processed_rows = []
         for idx, row in enumerate(input_data.features):
@@ -33,17 +34,38 @@ def predict_batch(input_data: BatchPredictionInput):
                     status_code=400,
                     detail=f"Row {idx} mismatch: Expected {expected_features} features, got {len(row)}."
                 )
-            try:
-                numeric_row = [float(x) for x in row]
-                processed_rows.append(numeric_row)
-            except ValueError as e:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Row {idx} casting failed: values must be numeric. Details: {str(e)}"
-                )
+            processed_row = []
+            for i, val in enumerate(row):
+                if i < len(features_config):
+                    feat_type = features_config[i].get("type", "continuous")
+                    if feat_type in ("numerical", "continuous"):
+                        try:
+                            processed_row.append(float(val))
+                        except (ValueError, TypeError) as e:
+                            raise HTTPException(
+                                status_code=400,
+                                detail=f"Row {idx} casting failed for '{features_config[i].get('name')}': value '{val}' must be numeric."
+                            )
+                    else:
+                        processed_row.append(str(val))
+                else:
+                    try:
+                        processed_row.append(float(val))
+                    except (ValueError, TypeError):
+                        processed_row.append(str(val))
+            processed_rows.append(processed_row)
                 
-        input_array = np.array(processed_rows)
-        predictions = model.predict(input_array).tolist()
+        input_array = np.array(processed_rows, dtype=object)
+        import pandas as pd
+        features_config = metadata.get("features", [])
+        feature_names = [f.get("name") for f in features_config]
+        
+        if len(feature_names) == input_array.shape[1]:
+            input_df = pd.DataFrame(input_array, columns=feature_names)
+        else:
+            input_df = pd.DataFrame(input_array)
+            
+        predictions = model.predict(input_df).tolist()
         
         result = {
             "status": "success",
@@ -52,7 +74,7 @@ def predict_batch(input_data: BatchPredictionInput):
         }
         
         if metadata.get("task_type") == "classification" and hasattr(model, "predict_proba"):
-            result["probabilities"] = model.predict_proba(input_array).tolist()
+            result["probabilities"] = model.predict_proba(input_df).tolist()
             result["classes"] = [str(c) for c in model.classes_]
             
         return result
@@ -110,6 +132,7 @@ async def predict_batch_csv(file: UploadFile = File(...)):
         
         numeric_data = []
         valid_rows_indices = []
+        features_config = metadata.get("features", [])
         
         for idx, row in enumerate(data_rows):
             if not row or all(x.strip() == "" for x in row):
@@ -119,21 +142,43 @@ async def predict_batch_csv(file: UploadFile = File(...)):
             if len(sub_row) < expected_features:
                 sub_row += ["0.0"] * (expected_features - len(sub_row))
                 
-            try:
-                numeric_row = [float(x) for x in sub_row]
-                numeric_data.append(numeric_row)
-                valid_rows_indices.append(idx)
-            except ValueError as e:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"CSV row {idx + data_rows_start + 1} parse error: all features must be numeric. Details: {str(e)}"
-                )
+            processed_row = []
+            for i, val in enumerate(sub_row):
+                if i < len(features_config):
+                    feat_type = features_config[i].get("type", "continuous")
+                    if feat_type in ("numerical", "continuous"):
+                        try:
+                            processed_row.append(float(val))
+                        except (ValueError, TypeError) as e:
+                            raise HTTPException(
+                                status_code=400,
+                                detail=f"CSV row {idx + data_rows_start + 1} parse error: value '{val}' for feature '{features_config[i].get('name')}' must be numeric."
+                            )
+                    else:
+                        processed_row.append(str(val))
+                else:
+                    try:
+                        processed_row.append(float(val))
+                    except (ValueError, TypeError):
+                        processed_row.append(str(val))
+                        
+            numeric_data.append(processed_row)
+            valid_rows_indices.append(idx)
                 
         if not numeric_data:
             raise HTTPException(status_code=400, detail="No valid data rows found in CSV.")
             
-        input_array = np.array(numeric_data)
-        predictions = model.predict(input_array)
+        input_array = np.array(numeric_data, dtype=object)
+        import pandas as pd
+        features_config = metadata.get("features", [])
+        feature_names = [f.get("name") for f in features_config]
+        
+        if len(feature_names) == input_array.shape[1]:
+            input_df = pd.DataFrame(input_array, columns=feature_names)
+        else:
+            input_df = pd.DataFrame(input_array)
+            
+        predictions = model.predict(input_df)
         
         output_header = list(header)
         target_name = metadata.get("target_name", "prediction")
@@ -144,7 +189,7 @@ async def predict_batch_csv(file: UploadFile = File(...)):
         if task_type == "classification":
             output_header.append("prediction_label")
             if hasattr(model, "predict_proba"):
-                probabilities = model.predict_proba(input_array)
+                probabilities = model.predict_proba(input_df)
                 classes = [str(c) for c in model.classes_]
                 for cls in classes:
                     output_header.append(f"probability_{cls}")
