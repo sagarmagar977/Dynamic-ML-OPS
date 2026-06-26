@@ -4,7 +4,7 @@ import axios from "axios";
 const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 export const fetchModels = async () => {
-  const { data } = await axios.get(`${API_BASE}/models`);
+  const { data } = await axios.get(`${API_BASE}/models/`);
   return data.models; // Returns list of model objects
 };
 
@@ -85,7 +85,7 @@ export const getClassImageUrl = (modelId, className) => {
 };
 
 export const predict = async (payload) => {
-  const { data } = await axios.post(`${API_BASE}/predict`, payload);
+  const { data } = await axios.post(`${API_BASE}/predict/`, payload);
   return data;
 };
 
