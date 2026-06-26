@@ -24,8 +24,18 @@ def predict_batch(input_data: BatchPredictionInput):
         model = model_data["binary"]
         metadata = model_data["metadata"]
         
-        expected_features = metadata.get("n_features_in_", len(metadata.get("features", [])))
-        features_config = metadata.get("features", [])
+        # Validate expected features count dynamically
+        expected_features = metadata.get("n_features_in_")
+        if not expected_features:
+            features_config = metadata.get("features", [])
+            if isinstance(features_config, list):
+                expected_features = len(features_config)
+        if not expected_features and hasattr(model, "n_features_in_"):
+            expected_features = model.n_features_in_
+        if not expected_features and len(input_data.features) > 0:
+            expected_features = len(input_data.features[0])
+            
+        features_config = metadata.get("features", []) if isinstance(metadata.get("features"), list) else []
         
         processed_rows = []
         for idx, row in enumerate(input_data.features):
@@ -36,35 +46,46 @@ def predict_batch(input_data: BatchPredictionInput):
                 )
             processed_row = []
             for i, val in enumerate(row):
+                feat_type = "continuous"
                 if i < len(features_config):
-                    feat_type = features_config[i].get("type", "continuous")
-                    if feat_type in ("numerical", "continuous"):
-                        try:
-                            processed_row.append(float(val))
-                        except (ValueError, TypeError) as e:
-                            raise HTTPException(
-                                status_code=400,
-                                detail=f"Row {idx} casting failed for '{features_config[i].get('name')}': value '{val}' must be numeric."
-                            )
-                    else:
-                        processed_row.append(str(val))
-                else:
+                    f_item = features_config[i]
+                    if isinstance(f_item, dict):
+                        feat_type = f_item.get("type", "continuous")
+                        
+                if feat_type in ("numerical", "continuous"):
                     try:
                         processed_row.append(float(val))
                     except (ValueError, TypeError):
                         processed_row.append(str(val))
+                else:
+                    processed_row.append(str(val))
             processed_rows.append(processed_row)
-                
+                 
         input_array = np.array(processed_rows, dtype=object)
         import pandas as pd
-        features_config = metadata.get("features", [])
-        feature_names = [f.get("name") for f in features_config]
         
-        if len(feature_names) == input_array.shape[1]:
-            input_df = pd.DataFrame(input_array, columns=feature_names)
-        else:
-            input_df = pd.DataFrame(input_array)
+        feature_names = []
+        for f in features_config:
+            if isinstance(f, dict):
+                feature_names.append(f.get("name") or "")
+            elif isinstance(f, str):
+                feature_names.append(f)
+                
+        # If metadata doesn't have valid feature names, try scikit-learn model attributes
+        if len(feature_names) != expected_features or not all(feature_names):
+            if hasattr(model, "feature_names_in_"):
+                feature_names = [str(n) for n in model.feature_names_in_]
+            elif hasattr(model, "steps"):
+                for name, step in model.steps:
+                    if hasattr(step, "feature_names_in_"):
+                        feature_names = [str(n) for n in step.feature_names_in_]
+                        break
+                        
+        # Fallback to string index if feature names still mismatched
+        if len(feature_names) != expected_features:
+            feature_names = [str(i) for i in range(expected_features)]
             
+        input_df = pd.DataFrame(input_array, columns=feature_names)
         predictions = model.predict(input_df).tolist()
         
         result = {
@@ -96,7 +117,17 @@ async def predict_batch_csv(file: UploadFile = File(...)):
     try:
         model = model_data["binary"]
         metadata = model_data["metadata"]
-        expected_features = metadata.get("n_features_in_", len(metadata.get("features", [])))
+        expected_features = metadata.get("n_features_in_")
+        if not expected_features:
+            features_config = metadata.get("features", [])
+            if isinstance(features_config, list):
+                expected_features = len(features_config)
+        if not expected_features and hasattr(model, "n_features_in_"):
+            expected_features = model.n_features_in_
+        if not expected_features:
+            # Fallback to the length of columns in first data row
+            expected_features = len(first_row)
+            
         task_type = metadata.get("task_type", "unknown")
         
         content = await file.read()
@@ -132,7 +163,7 @@ async def predict_batch_csv(file: UploadFile = File(...)):
         
         numeric_data = []
         valid_rows_indices = []
-        features_config = metadata.get("features", [])
+        features_config = metadata.get("features", []) if isinstance(metadata.get("features"), list) else []
         
         for idx, row in enumerate(data_rows):
             if not row or all(x.strip() == "" for x in row):
@@ -144,40 +175,51 @@ async def predict_batch_csv(file: UploadFile = File(...)):
                 
             processed_row = []
             for i, val in enumerate(sub_row):
+                feat_type = "continuous"
                 if i < len(features_config):
-                    feat_type = features_config[i].get("type", "continuous")
-                    if feat_type in ("numerical", "continuous"):
-                        try:
-                            processed_row.append(float(val))
-                        except (ValueError, TypeError) as e:
-                            raise HTTPException(
-                                status_code=400,
-                                detail=f"CSV row {idx + data_rows_start + 1} parse error: value '{val}' for feature '{features_config[i].get('name')}' must be numeric."
-                            )
-                    else:
-                        processed_row.append(str(val))
-                else:
+                    f_item = features_config[i]
+                    if isinstance(f_item, dict):
+                        feat_type = f_item.get("type", "continuous")
+                        
+                if feat_type in ("numerical", "continuous"):
                     try:
                         processed_row.append(float(val))
                     except (ValueError, TypeError):
                         processed_row.append(str(val))
-                        
+                else:
+                    processed_row.append(str(val))
+                         
             numeric_data.append(processed_row)
             valid_rows_indices.append(idx)
-                
+                 
         if not numeric_data:
             raise HTTPException(status_code=400, detail="No valid data rows found in CSV.")
             
         input_array = np.array(numeric_data, dtype=object)
         import pandas as pd
-        features_config = metadata.get("features", [])
-        feature_names = [f.get("name") for f in features_config]
         
-        if len(feature_names) == input_array.shape[1]:
-            input_df = pd.DataFrame(input_array, columns=feature_names)
-        else:
-            input_df = pd.DataFrame(input_array)
+        feature_names = []
+        for f in features_config:
+            if isinstance(f, dict):
+                feature_names.append(f.get("name") or "")
+            elif isinstance(f, str):
+                feature_names.append(f)
+                
+        # If metadata doesn't have valid feature names, try scikit-learn model attributes
+        if len(feature_names) != expected_features or not all(feature_names):
+            if hasattr(model, "feature_names_in_"):
+                feature_names = [str(n) for n in model.feature_names_in_]
+            elif hasattr(model, "steps"):
+                for name, step in model.steps:
+                    if hasattr(step, "feature_names_in_"):
+                        feature_names = [str(n) for n in step.feature_names_in_]
+                        break
+                        
+        # Fallback to string index if feature names still mismatched
+        if len(feature_names) != expected_features:
+            feature_names = [str(i) for i in range(expected_features)]
             
+        input_df = pd.DataFrame(input_array, columns=feature_names)
         predictions = model.predict(input_df)
         
         output_header = list(header)

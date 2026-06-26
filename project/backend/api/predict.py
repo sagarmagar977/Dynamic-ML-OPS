@@ -22,46 +22,66 @@ def predict(input_data: PredictionInput):
         model = model_data["binary"]
         metadata = model_data["metadata"]
         
-        # Validate feature counts
-        expected_features = metadata.get("n_features_in_", len(metadata.get("features", [])))
+        # Validate feature counts dynamically
+        expected_features = metadata.get("n_features_in_")
+        if not expected_features:
+            features_config = metadata.get("features", [])
+            if isinstance(features_config, list):
+                expected_features = len(features_config)
+        if not expected_features and hasattr(model, "n_features_in_"):
+            expected_features = model.n_features_in_
+        if not expected_features:
+            expected_features = len(input_data.features)
+            
         if len(input_data.features) != expected_features:
             raise HTTPException(
                 status_code=400,
                 detail=f"Feature count mismatch: Expected {expected_features} features, got {len(input_data.features)}"
             )
             
-        # Cast inputs based on metadata types if available
-        features_config = metadata.get("features", [])
+        # Cast inputs based on metadata types dynamically and safely
+        features_config = metadata.get("features", []) if isinstance(metadata.get("features"), list) else []
         processed_features = []
         for i, val in enumerate(input_data.features):
+            feat_type = "continuous"
             if i < len(features_config):
-                feat_type = features_config[i].get("type", "continuous")
-                if feat_type in ("numerical", "continuous"):
-                    try:
-                        processed_features.append(float(val))
-                    except (ValueError, TypeError) as e:
-                        raise HTTPException(
-                            status_code=400,
-                            detail=f"Feature casting error: value '{val}' for feature '{features_config[i].get('name')}' must be numeric."
-                        )
-                else:
-                    processed_features.append(str(val))
-            else:
-                # Fallback: try casting to float, otherwise string
+                f_item = features_config[i]
+                if isinstance(f_item, dict):
+                    feat_type = f_item.get("type", "continuous")
+                    
+            if feat_type in ("numerical", "continuous"):
                 try:
                     processed_features.append(float(val))
                 except (ValueError, TypeError):
                     processed_features.append(str(val))
+            else:
+                processed_features.append(str(val))
                     
+        # Dynamically extract feature/column names
         import pandas as pd
-        features_config = metadata.get("features", [])
-        feature_names = [f.get("name") for f in features_config]
-        
-        if len(feature_names) == len(processed_features):
-            input_df = pd.DataFrame([processed_features], columns=feature_names)
-        else:
-            input_df = pd.DataFrame([processed_features])
+        feature_names = []
+        for f in features_config:
+            if isinstance(f, dict):
+                feature_names.append(f.get("name") or "")
+            elif isinstance(f, str):
+                feature_names.append(f)
+                
+        # If metadata doesn't have valid feature names, try scikit-learn model attributes
+        if len(feature_names) != expected_features or not all(feature_names):
+            if hasattr(model, "feature_names_in_"):
+                feature_names = [str(n) for n in model.feature_names_in_]
+            elif hasattr(model, "steps"):
+                for name, step in model.steps:
+                    if hasattr(step, "feature_names_in_"):
+                        feature_names = [str(n) for n in step.feature_names_in_]
+                        break
+                        
+        # Fallback to string index if feature names still mismatched
+        if len(feature_names) != expected_features:
+            feature_names = [str(i) for i in range(expected_features)]
             
+        input_df = pd.DataFrame([processed_features], columns=feature_names)
+        
         # Predict
         prediction = model.predict(input_df)
         pred_list = prediction.tolist()
