@@ -4,11 +4,21 @@ from backend.api import models, model_info, predict, predict_batch, agent
 
 app = FastAPI(title="OmniPredictor")
 
-# CORS middleware - adjust origins as needed for production
+import os
+
+# CORS middleware - read allowed origins from environment
+frontend_url = os.environ.get("FRONTEND_URL")
+if frontend_url:
+    origins = [o.strip() for o in frontend_url.split(",")]
+    # Include localhost for local frontend dev convenience
+    origins.extend(["http://localhost:5173", "http://localhost:3000"])
+else:
+    origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with your frontend URL
-    allow_credentials=True,
+    allow_origins=origins,
+    allow_credentials=True if frontend_url else False,  # Credentials must not be True when wildcard "*" is used
     allow_methods=["*"],
     allow_headers=["*"],
 )
