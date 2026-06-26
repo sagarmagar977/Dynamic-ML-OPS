@@ -34,8 +34,20 @@ const ModelManager = ({ models, activeModelId, onRefresh, onActivate }) => {
   const [classImages, setClassImages] = useState({});
   const [inspectLoading, setInspectLoading] = useState(false);
   const [metaClassNames, setMetaClassNames] = useState([]);
-  const [sortBy, setSortBy] = useState("newest");
   const [autoActivate, setAutoActivate] = useState(false);
+  const [sortBy, setSortBy] = useState("newest");
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest(".action-menu-td")) {
+        setActiveMenuId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Local metadata reader to extract friendly class names
   useEffect(() => {
@@ -152,7 +164,11 @@ const ModelManager = ({ models, activeModelId, onRefresh, onActivate }) => {
     if (confirm(`Are you sure you want to completely de-register and delete ${id}?`)) {
       try {
         await deleteModel(id);
-        onRefresh();
+        if (id === activeModelId) {
+          onActivate(null);
+        } else {
+          onRefresh();
+        }
         setActiveMenuId(null);
       } catch (err) {
         alert("Deletion failed: " + (err.response?.data?.detail || err.message));
@@ -392,7 +408,7 @@ with open("metadata.json", "w") as f:
           </div>
         </div>
 
-        <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+        <div className="overflow-x-auto overflow-y-visible">
           <table className="w-full text-xs font-mono border-collapse text-zinc-400">
             <thead>
               <tr className="border-b border-zinc-900 text-zinc-500 text-left">
@@ -459,7 +475,10 @@ with open("metadata.json", "w") as f:
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-2 text-right relative">
+                      <td 
+                        className="py-3 px-2 text-right relative action-menu-td"
+                        onMouseLeave={() => setActiveMenuId(null)}
+                      >
                         <div className="flex items-center justify-end space-x-2">
                           {/* Class Image Trigger */}
                           {model.classes && model.classes.length > 0 && (
@@ -484,7 +503,10 @@ with open("metadata.json", "w") as f:
 
                         {/* 3-Dot Action Menu Context Dropdown */}
                         {activeMenuId === model.id && (
-                          <div className="absolute right-2 mt-1 w-32 bg-zinc-950 border border-zinc-800 rounded shadow-xl z-20 text-left py-1 font-mono text-[10px] uppercase">
+                          <div 
+                            onMouseLeave={() => setActiveMenuId(null)}
+                            className="absolute right-2 mt-1 w-32 bg-zinc-950 border border-zinc-800 rounded shadow-xl z-20 text-left py-1 font-mono text-[10px] uppercase"
+                          >
                             <button
                               onClick={() => handleActivate(model.id)}
                               className="w-full text-left px-3 py-1.5 hover:bg-zinc-900 text-green-500 font-bold block"
