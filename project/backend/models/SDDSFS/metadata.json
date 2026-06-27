@@ -1,0 +1,105 @@
+{
+  "model_name": "Titanic_Predictor",
+  "algorithm_variant": "GradientBoostingClassifier",
+  "task_type": "classification",
+  "target_name": "survived",
+  "classes": [
+    "0",
+    "1"
+  ],
+  "features": [
+    {
+      "name": "pclass",
+      "type": "numerical",
+      "min": 1.0,
+      "max": 3.0,
+      "default": 3.0,
+      "step": 1.0
+    },
+    {
+      "name": "sex",
+      "type": "categorical",
+      "options": [
+        "male",
+        "female"
+      ],
+      "default": "male"
+    },
+    {
+      "name": "age",
+      "type": "numerical",
+      "min": 0.42,
+      "max": 80.0,
+      "default": 28.0,
+      "step": 1.0
+    },
+    {
+      "name": "sibsp",
+      "type": "numerical",
+      "min": 0.0,
+      "max": 8.0,
+      "default": 0.0,
+      "step": 1.0
+    },
+    {
+      "name": "parch",
+      "type": "numerical",
+      "min": 0.0,
+      "max": 6.0,
+      "default": 0.0,
+      "step": 1.0
+    },
+    {
+      "name": "fare",
+      "type": "numerical",
+      "min": 0.0,
+      "max": 512.0,
+      "default": 14.45,
+      "step": 1.0
+    },
+    {
+      "name": "embarked",
+      "type": "categorical",
+      "options": [
+        "S",
+        "C",
+        "Q"
+      ],
+      "default": "S"
+    },
+    {
+      "name": "family_size",
+      "type": "numerical",
+      "min": 1.0,
+      "max": 11.0,
+      "default": 1.0,
+      "step": 1.0
+    },
+    {
+      "name": "is_alone",
+      "type": "categorical",
+      "options": [
+        "0",
+        "1"
+      ],
+      "default": "1"
+    },
+    {
+      "name": "fare_tier",
+      "type": "categorical",
+      "options": [
+        "Low",
+        "Med",
+        "High",
+        "Unknown"
+      ],
+      "default": "Low"
+    }
+  ],
+  "metrics": {
+    "best_accuracy": 0.8173840244262781,
+    "test_accuracy": 0.7932960893854749
+  },
+  "colab_link": null,
+  "n_features_in_": 10
+}

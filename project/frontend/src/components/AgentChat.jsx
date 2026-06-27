@@ -2,12 +2,128 @@
 import React, { useState, useEffect, useRef } from "react";
 import { sendAgentMessage } from "../services/api";
 
+// Lightweight inline markdown renderer — no extra packages needed
+const SimpleMarkdown = ({ text }) => {
+  if (!text) return null;
+
+  const parseInline = (str) => {
+    // Bold **text** or __text__
+    // Italic *text* or _text_
+    // Inline code `code`
+    const parts = [];
+    const regex = /(`[^`]+`|\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_)/g;
+    let lastIndex = 0;
+    let match;
+    let key = 0;
+    while ((match = regex.exec(str)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(<span key={key++}>{str.slice(lastIndex, match.index)}</span>);
+      }
+      const token = match[0];
+      if (token.startsWith('`')) {
+        parts.push(<code key={key++} style={{ background: 'rgba(255,255,255,0.08)', padding: '1px 5px', borderRadius: 3, fontFamily: 'monospace', fontSize: '0.9em' }}>{token.slice(1, -1)}</code>);
+      } else if (token.startsWith('**') || token.startsWith('__')) {
+        parts.push(<strong key={key++}>{token.slice(2, -2)}</strong>);
+      } else {
+        parts.push(<em key={key++}>{token.slice(1, -1)}</em>);
+      }
+      lastIndex = regex.lastIndex;
+    }
+    if (lastIndex < str.length) parts.push(<span key={key++}>{str.slice(lastIndex)}</span>);
+    return parts;
+  };
+
+  const lines = text.split('\n');
+  const elements = [];
+  let i = 0;
+  let key = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Code block ```
+    if (line.trim().startsWith('```')) {
+      const lang = line.trim().slice(3).trim();
+      const codeLines = [];
+      i++;
+      while (i < lines.length && !lines[i].trim().startsWith('```')) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      elements.push(
+        <pre key={key++} style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '10px 12px', overflowX: 'auto', margin: '8px 0', fontSize: '0.8em' }}>
+          {lang && <span style={{ display: 'block', fontSize: '0.75em', opacity: 0.5, marginBottom: 4, textTransform: 'uppercase' }}>{lang}</span>}
+          <code style={{ fontFamily: 'monospace', whiteSpace: 'pre' }}>{codeLines.join('\n')}</code>
+        </pre>
+      );
+      i++;
+      continue;
+    }
+
+    // H1
+    if (line.startsWith('# ')) {
+      elements.push(<h3 key={key++} style={{ fontWeight: 'bold', fontSize: '1.1em', margin: '10px 0 4px', borderBottom: '1px solid rgba(255,255,255,0.15)', paddingBottom: 3 }}>{parseInline(line.slice(2))}</h3>);
+      i++; continue;
+    }
+    // H2
+    if (line.startsWith('## ')) {
+      elements.push(<h4 key={key++} style={{ fontWeight: 'bold', fontSize: '1.0em', margin: '8px 0 3px', opacity: 0.9 }}>{parseInline(line.slice(3))}</h4>);
+      i++; continue;
+    }
+    // H3
+    if (line.startsWith('### ')) {
+      elements.push(<h5 key={key++} style={{ fontWeight: 'bold', fontSize: '0.95em', margin: '6px 0 2px', opacity: 0.85 }}>{parseInline(line.slice(4))}</h5>);
+      i++; continue;
+    }
+
+    // Bullet list
+    if (/^[-*] /.test(line)) {
+      const items = [];
+      while (i < lines.length && /^[-*] /.test(lines[i])) {
+        items.push(<li key={i} style={{ marginBottom: 2 }}>{parseInline(lines[i].slice(2))}</li>);
+        i++;
+      }
+      elements.push(<ul key={key++} style={{ paddingLeft: 16, margin: '4px 0', listStyle: 'disc' }}>{items}</ul>);
+      continue;
+    }
+
+    // Numbered list
+    if (/^\d+\. /.test(line)) {
+      const items = [];
+      while (i < lines.length && /^\d+\. /.test(lines[i])) {
+        items.push(<li key={i} style={{ marginBottom: 2 }}>{parseInline(lines[i].replace(/^\d+\. /, ''))}</li>);
+        i++;
+      }
+      elements.push(<ol key={key++} style={{ paddingLeft: 16, margin: '4px 0', listStyle: 'decimal' }}>{items}</ol>);
+      continue;
+    }
+
+    // Horizontal rule
+    if (line.trim() === '---' || line.trim() === '***') {
+      elements.push(<hr key={key++} style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.12)', margin: '8px 0' }} />);
+      i++; continue;
+    }
+
+    // Blank line → spacer
+    if (line.trim() === '') {
+      elements.push(<div key={key++} style={{ height: 6 }} />);
+      i++; continue;
+    }
+
+    // Normal paragraph
+    elements.push(<p key={key++} style={{ margin: '2px 0', lineHeight: 1.6 }}>{parseInline(line)}</p>);
+    i++;
+  }
+
+  return <div style={{ fontFamily: 'inherit' }}>{elements}</div>;
+};
+
 const AgentChat = ({ activeModelId, onRefresh, onActivate }) => {
   const [messages, setMessages] = useState([
     {
       id: "init",
       role: "model",
-      text: "OmniPredictor AI Agent online. I am restricted to only answering questions directly related to the currently active model and its metadata.",
+      text: "I'm your **OmniPredictor ML Expert Agent** — think of me as a data scientist living inside your app!\n\nI can help you with:\n- 🔍 **Understanding** your active model (metrics, features, algorithm)\n- 🎯 **Running predictions** — just give me the numbers\n- 📋 **Listing or activating** models in the registry\n- 📖 **Explaining** ML concepts like confusion matrices, algorithms, and formulas\n\nActivate a model first and then fire away — I'm all yours! 🚀",
     },
   ]);
   const [inputValue, setInputValue] = useState("");
@@ -68,7 +184,7 @@ const AgentChat = ({ activeModelId, onRefresh, onActivate }) => {
       {
         id: "init_" + Date.now(),
         role: "model",
-        text: "OmniPredictor AI Agent online. I am restricted to only answering questions directly related to the currently active model and its metadata.",
+        text: "",
       },
     ]);
   };
@@ -244,12 +360,12 @@ const AgentChat = ({ activeModelId, onRefresh, onActivate }) => {
                 {isUser ? "Operator" : "AI Agent"}
               </span>
               <div
-                className={`p-3 rounded text-xs font-mono max-w-xl leading-relaxed whitespace-pre-wrap ${isUser
-                  ? "bg-[var(--accent-color)] text-[var(--btn-text)] font-bold shadow-sm"
+                className={`p-3 rounded text-xs font-mono max-w-xl leading-relaxed ${isUser
+                  ? "bg-[var(--accent-color)] text-[var(--btn-text)] font-bold shadow-sm whitespace-pre-wrap"
                   : "bg-[var(--bg-color)] border border-[var(--border-color)] text-[var(--text-color)]"
                   }`}
               >
-                {msg.text}
+                {isUser ? msg.text : <SimpleMarkdown text={msg.text} />}
 
                 {/* Inline Action/Prediction Card rendering */}
                 {msg.outcome?.prediction_result && (

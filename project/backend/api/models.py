@@ -417,26 +417,119 @@ def get_class_image(model_id: str, class_name: str):
 
 @router.post("/inspect", response_model=dict)
 async def inspect_model(model_file: UploadFile = File(...)):
-    """Temporarily load and inspect model file parameters to return classes and task_type."""
+    """
+    Inspect a joblib model file. Returns task type, classes, and version compatibility info.
+    - If sklearn versions mismatch but model still loads: returns a version_warning with exact pip command.
+    - If model cannot load at all: returns structured 400 with exact pip install command to fix it.
+    """
     import tempfile
     import joblib
+    import warnings
+    import re
+    import sklearn
+    import numpy
+    import pandas
+
+    SERVER_SKLEARN  = sklearn.__version__
+    SERVER_NUMPY    = numpy.__version__
+    SERVER_PANDAS   = pandas.__version__
+
+    # This server is pinned to Google Colab's default environment.
+    # Users who train in standard Colab (without upgrading packages) are always compatible.
+    PIP_FIX_CMD = (
+        f"# These are Google Colab's default versions — matches this server exactly.\n"
+        f"# Run this ONLY if you upgraded packages in Colab. Otherwise just use Colab as-is.\n"
+        f"!pip install scikit-learn=={SERVER_SKLEARN} "
+        f"numpy=={SERVER_NUMPY} "
+        f"pandas=={SERVER_PANDAS} --quiet"
+    )
+
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".joblib") as temp_file:
-            temp_file.write(await model_file.read())
-            temp_path = temp_file.name
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".joblib") as tmp:
+            tmp.write(await model_file.read())
+            temp_path = tmp.name
+
+        model = None
+        raw_warnings = []
 
         try:
-            model = joblib.load(temp_path)
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                model = joblib.load(temp_path)
+                raw_warnings = [str(w.message) for w in caught]
         finally:
             if os.path.exists(temp_path):
                 os.remove(temp_path)
 
+        if model is None:
+            raise ValueError("Model file loaded as None — file may be empty or corrupt.")
+
+        # --- Parse version mismatch from sklearn's InconsistentVersionWarning ---
+        # sklearn warning text: "Trying to unpickle estimator X from version Y when using version Z."
+        model_sklearn_version = None
+        version_warning = None
+
+        for msg in raw_warnings:
+            match = re.search(
+                r"from version (\S+) when using version (\S+)", msg
+            )
+            if match:
+                model_sklearn_version = match.group(1)
+                server_ver            = match.group(2)
+                version_warning = {
+                    "severity": "warning",
+                    "model_sklearn_version": model_sklearn_version,
+                    "server_sklearn_version": server_ver,
+                    "message": (
+                        f"Your model was trained with scikit-learn {model_sklearn_version}, "
+                        f"but this server runs scikit-learn {server_ver}. "
+                        f"The model loaded successfully, but results may differ slightly."
+                    ),
+                    "fix_command": PIP_FIX_CMD,
+                }
+                break
+
+        # --- Build response ---
         model_classes = getattr(model, "classes_", None)
+        base = {
+            "server_sklearn_version":  SERVER_SKLEARN,
+            "server_numpy_version":    SERVER_NUMPY,
+            "server_pandas_version":   SERVER_PANDAS,
+            "model_sklearn_version":   model_sklearn_version,
+            "version_warning":         version_warning,
+        }
+
         if model_classes is not None:
-            classes_list = [str(c) for c in list(model_classes)]
-            return {"task_type": "classification", "classes": classes_list}
+            return {**base, "task_type": "classification", "classes": [str(c) for c in model_classes]}
         else:
-            return {"task_type": "regression"}
-            
+            return {**base, "task_type": "regression"}
+
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to inspect model file: {str(e)}")
+        error_str = str(e)
+
+        # Try to extract the model's sklearn version from the exception message
+        model_ver_in_error = None
+        match = re.search(r"from version (\S+) when using version (\S+)", error_str)
+        if match:
+            model_ver_in_error = match.group(1)
+
+        version_detail = ""
+        if model_ver_in_error:
+            version_detail = (
+                f" Your model was saved with scikit-learn {model_ver_in_error}. "
+                f"This server runs scikit-learn {SERVER_SKLEARN}."
+            )
+
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "version_mismatch" if model_ver_in_error else "load_failed",
+                "message": f"Failed to load model file.{version_detail}",
+                "model_sklearn_version": model_ver_in_error,
+                "server_sklearn_version": SERVER_SKLEARN,
+                "server_numpy_version":   SERVER_NUMPY,
+                "server_pandas_version":  SERVER_PANDAS,
+                "fix_command": PIP_FIX_CMD,
+                "raw_error": error_str,
+            }
+        )

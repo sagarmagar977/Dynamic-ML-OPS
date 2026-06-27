@@ -1,8 +1,20 @@
+# ============================================================
+# Backend dependencies — pinned to Google Colab defaults
+# Python 3.11 (same as Google Colab + Render default)
+# scikit-learn, numpy, pandas MUST match Colab to load joblib
+# ============================================================
+
+# API framework
 fastapi
-uvicorn
-scikit-learn
-joblib
-numpy
+uvicorn[standard]
 python-multipart
+
+# ML — pinned to Google Colab default versions
+scikit-learn==1.6.1
+numpy==2.0.2
+pandas==2.2.2
+joblib
+scipy
+
+# Database
 supabase
-pandas

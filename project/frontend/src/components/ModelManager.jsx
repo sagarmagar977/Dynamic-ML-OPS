@@ -36,6 +36,8 @@ const ModelManager = ({ models, activeModelId, onRefresh, onActivate }) => {
   const [metaClassNames, setMetaClassNames] = useState([]);
   const [autoActivate, setAutoActivate] = useState(false);
   const [sortBy, setSortBy] = useState("newest");
+  const [versionMismatch, setVersionMismatch] = useState(null); // { type: 'error'|'warning', data: {...} }
+  const [copiedFix, setCopiedFix] = useState(false);
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -74,23 +76,47 @@ const ModelManager = ({ models, activeModelId, onRefresh, onActivate }) => {
     reader.readAsText(metadataFile);
   }, [metadataFile]);
 
+  const copyFixCommand = (cmd) => {
+    navigator.clipboard.writeText(cmd).then(() => {
+      setCopiedFix(true);
+      setTimeout(() => setCopiedFix(false), 2000);
+    });
+  };
+
   useEffect(() => {
     const runInspect = async () => {
       if (!modelFile) {
         setInspectedData(null);
         setWantClassImages(false);
         setClassImages({});
+        setVersionMismatch(null);
+        setUploadError(null);
         return;
       }
       setInspectLoading(true);
       setUploadError(null);
+      setVersionMismatch(null);
       try {
         const result = await inspectModel(modelFile);
         setInspectedData(result);
+        // Soft warning: loaded OK but version mismatch detected
+        if (result.version_warning) {
+          setVersionMismatch({ type: "warning", data: result.version_warning });
+        }
       } catch (err) {
         console.error("Model inspection failed:", err);
-        setUploadError("Could not inspect model file. Please ensure it is a valid joblib file.");
         setInspectedData(null);
+        // Try to parse structured version mismatch from backend
+        const detail = err.response?.data?.detail;
+        if (detail && typeof detail === "object" && detail.fix_command) {
+          setVersionMismatch({ type: "error", data: detail });
+        } else {
+          setUploadError(
+            typeof detail === "string"
+              ? detail
+              : "Could not inspect model file. Please ensure it is a valid joblib file."
+          );
+        }
       } finally {
         setInspectLoading(false);
       }
@@ -243,9 +269,71 @@ with open("metadata.json", "w") as f:
           </div>
         )}
 
-        {uploadError && (
+        {/* Plain error (non-version issues) */}
+        {uploadError && !versionMismatch && (
           <div className="border border-red-500 bg-red-950/20 text-red-500 font-mono text-xs p-3 rounded">
             [DEPLOY ERROR]: {uploadError}
+          </div>
+        )}
+
+        {/* Version mismatch panel — hard error (cannot load) */}
+        {versionMismatch?.type === "error" && (
+          <div className="border border-red-500 bg-red-950/20 font-mono text-xs rounded overflow-hidden">
+            <div className="bg-red-500/10 border-b border-red-500/40 px-3 py-2 flex items-center gap-2">
+              <span className="text-red-400 font-bold uppercase tracking-wider">⛔ Version Mismatch — Cannot Load Model</span>
+            </div>
+            <div className="p-3 space-y-3">
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="bg-black/40 border border-red-900/40 rounded p-2 space-y-1">
+                  <div className="text-zinc-500 uppercase text-[9px] tracking-wider">Model was trained with</div>
+                  <div className="text-red-400">scikit-learn {versionMismatch.data.model_sklearn_version ?? "unknown"}</div>
+                </div>
+                <div className="bg-black/40 border border-zinc-800 rounded p-2 space-y-1">
+                  <div className="text-zinc-500 uppercase text-[9px] tracking-wider">Server requires</div>
+                  <div className="text-green-400">scikit-learn {versionMismatch.data.server_sklearn_version}</div>
+                  <div className="text-green-400">numpy {versionMismatch.data.server_numpy_version}</div>
+                  <div className="text-green-400">pandas {versionMismatch.data.server_pandas_version}</div>
+                </div>
+              </div>
+              <div className="text-zinc-400 text-[10px]">
+                Retrain your model with the exact versions above, then re-upload.
+                Run this at the top of your notebook:
+              </div>
+              <div className="relative group">
+                <pre className="bg-black border border-zinc-800 rounded p-2 text-green-400 text-[11px] overflow-x-auto pr-20">{versionMismatch.data.fix_command}</pre>
+                <button
+                  type="button"
+                  onClick={() => copyFixCommand(versionMismatch.data.fix_command)}
+                  className="absolute right-2 top-2 text-[9px] uppercase font-bold px-2 py-1 rounded border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 hover:border-green-500 text-zinc-400 hover:text-green-400 transition"
+                >
+                  {copiedFix ? "✓ COPIED" : "COPY"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Version mismatch panel — soft warning (loaded OK but versions differ) */}
+        {versionMismatch?.type === "warning" && (
+          <div className="border border-yellow-600 bg-yellow-950/20 font-mono text-xs rounded overflow-hidden">
+            <div className="bg-yellow-600/10 border-b border-yellow-600/30 px-3 py-2 flex items-center gap-2">
+              <span className="text-yellow-400 font-bold uppercase tracking-wider">⚠ Version Mismatch Warning</span>
+              <span className="text-yellow-600 text-[9px]">Model loaded — but retrain recommended</span>
+            </div>
+            <div className="p-3 space-y-3">
+              <div className="text-yellow-300 text-[10px]">{versionMismatch.data.message}</div>
+              <div className="text-zinc-400 text-[10px]">To eliminate any risk, retrain with the server versions:</div>
+              <div className="relative group">
+                <pre className="bg-black border border-zinc-800 rounded p-2 text-yellow-300 text-[11px] overflow-x-auto pr-20">{versionMismatch.data.fix_command}</pre>
+                <button
+                  type="button"
+                  onClick={() => copyFixCommand(versionMismatch.data.fix_command)}
+                  className="absolute right-2 top-2 text-[9px] uppercase font-bold px-2 py-1 rounded border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 hover:border-yellow-500 text-zinc-400 hover:text-yellow-400 transition"
+                >
+                  {copiedFix ? "✓ COPIED" : "COPY"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
