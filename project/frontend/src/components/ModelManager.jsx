@@ -77,7 +77,9 @@ const ModelManager = ({ models, activeModelId, onRefresh, onActivate }) => {
   }, [metadataFile]);
 
   const copyFixCommand = (cmd) => {
-    navigator.clipboard.writeText(cmd).then(() => {
+    // Only copy the pip install line, not the comment lines
+    const pipLine = cmd.split("\n").filter((l) => l.trim().startsWith("!pip")).pop() ?? cmd;
+    navigator.clipboard.writeText(pipLine).then(() => {
       setCopiedFix(true);
       setTimeout(() => setCopiedFix(false), 2000);
     });
